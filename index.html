@@ -1171,11 +1171,17 @@
                             <label for="smartRecurringEnabled">Enable Recurring Task</label>
                         </div>
                         <div class="recurring-options" id="smartRecurringDetails">
-                            <div class="recurring-buttons">
+                            <div class="recurring-buttons" style="grid-template-columns: repeat(3, 1fr);">
+                                <button class="btn-option" onclick="selectSmartRecurring('minutes', this)">Minutes</button>
+                                <button class="btn-option" onclick="selectSmartRecurring('hours', this)">Hours</button>
                                 <button class="btn-option" onclick="selectSmartRecurring('daily', this)">Daily</button>
                                 <button class="btn-option" onclick="selectSmartRecurring('weekly', this)">Weekly</button>
                                 <button class="btn-option" onclick="selectSmartRecurring('monthly', this)">Monthly</button>
+                                <button class="btn-option" onclick="selectSmartRecurring('custom', this)">Custom</button>
                             </div>
+                            <div id="smartTimePresets"></div>
+                            <div id="smartDaysSelector"></div>
+                            <div id="smartCustomRecurring"></div>
                         </div>
                     </div>
 
@@ -1244,8 +1250,51 @@
 
         function selectSmartRecurring(type, button) {
             selectedRecurring = type;
-            document.querySelectorAll('#smartRecurringDetails .btn-option').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#smartRecurringDetails .recurring-buttons .btn-option').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
+            showSmartRecurringPresets(type);
+        }
+
+        function showSmartRecurringPresets(type) {
+            const presetsContainer = document.getElementById('smartTimePresets');
+            const daysContainer = document.getElementById('smartDaysSelector');
+            const customContainer = document.getElementById('smartCustomRecurring');
+            
+            presetsContainer.innerHTML = '';
+            daysContainer.innerHTML = '';
+            customContainer.innerHTML = '';
+            
+            if (type === 'minutes') {
+                presetsContainer.innerHTML = `
+                    <div class="time-presets">
+                        <button class="btn-option" onclick="selectPreset(this)">1m</button> <button class="btn-option" onclick="selectPreset(this)">5m</button> <button class="btn-option" onclick="selectPreset(this)">15m</button> <button class="btn-option" onclick="selectPreset(this)">30m</button>
+                    </div>`;
+            } else if (type === 'hours') {
+                presetsContainer.innerHTML = `
+                    <div class="time-presets">
+                        <button class="btn-option" onclick="selectPreset(this)">1h</button> <button class="btn-option" onclick="selectPreset(this)">3h</button> <button class="btn-option" onclick="selectPreset(this)">6h</button> <button class="btn-option" onclick="selectPreset(this)">12h</button>
+                    </div>`;
+            } else if (type === 'weekly') {
+                daysContainer.innerHTML = `
+                    <div class="days-selector">
+                        <button class="day-btn" onclick="toggleDay(this)" data-day="1">M</button> <button class="day-btn" onclick="toggleDay(this)" data-day="2">T</button> <button class="day-btn" onclick="toggleDay(this)" data-day="3">W</button> <button class="day-btn" onclick="toggleDay(this)" data-day="4">TH</button> <button class="day-btn" onclick="toggleDay(this)" data-day="5">F</button> <button class="day-btn" onclick="toggleDay(this)" data-day="6">S</button> <button class="day-btn" onclick="toggleDay(this)" data-day="0">SU</button>
+                    </div>`;
+            } else if (type === 'custom') {
+                customContainer.innerHTML = `
+                    <input type="number" placeholder="Every X" class="form-input" id="smartCustomInterval" style="margin-top: 8px;">
+                    <select class="form-input" id="smartCustomUnit" style="margin-top: 8px;">
+                        <option value="minutes">Minutes</option> <option value="hours">Hours</option> <option value="days">Days</option> <option value="weeks">Weeks</option> <option value="months">Months</option>
+                    </select>`;
+            }
+        }
+
+        function selectPreset(button) {
+            button.parentElement.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        }
+
+        function toggleDay(button) {
+            button.classList.toggle('active');
         }
 
         function saveSmartTask() {
@@ -1266,7 +1315,13 @@
                 tags: document.getElementById('smartTaskTags').value.trim(),
                 priority: selectedPriority,
                 subtasks: subtasks,
-                recurring: isRecurring ? { type: selectedRecurring } : null,
+                recurring: isRecurring ? {
+                    type: selectedRecurring,
+                    preset: getSelectedPreset('#smartTimePresets'),
+                    days: getSelectedDays('#smartDaysSelector'),
+                    customInterval: document.getElementById('smartCustomInterval')?.value,
+                    customUnit: document.getElementById('smartCustomUnit')?.value
+                } : null,
                 completed: false,
                 createdAt: new Date().toISOString()
             };
@@ -1275,6 +1330,16 @@
             saveToStorage();
             renderTasks();
             closeBottomSheet();
+        }
+
+        function getSelectedPreset(containerSelector) {
+            const activePreset = document.querySelector(`${containerSelector} .btn-option.active`);
+            return activePreset ? activePreset.textContent : null;
+        }
+
+        function getSelectedDays(containerSelector) {
+            const activeDays = document.querySelectorAll(`${containerSelector} .day-btn.active`);
+            return Array.from(activeDays).map(btn => btn.dataset.day);
         }
 
         function closeBottomSheet() {
@@ -1343,13 +1408,42 @@
 
         function selectRecurring(type, button) {
             selectedRecurring = type;
-            document.querySelectorAll('.recurring-buttons .btn-option').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#recurringOptions .recurring-buttons .btn-option').forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             showRecurringPresets(type);
         }
 
         function showRecurringPresets(type) {
-            // Full logic for presets, days, etc. goes here as it was in your original code
+            const presetsContainer = document.getElementById('timePresets');
+            const daysContainer = document.getElementById('daysSelector');
+            const customContainer = document.getElementById('customRecurring');
+            
+            presetsContainer.innerHTML = '';
+            daysContainer.innerHTML = '';
+            customContainer.innerHTML = '';
+            
+            if (type === 'minutes') {
+                presetsContainer.innerHTML = `
+                    <div class="time-presets">
+                        <button class="btn-option" onclick="selectPreset(this)">1m</button> <button class="btn-option" onclick="selectPreset(this)">5m</button> <button class="btn-option" onclick="selectPreset(this)">15m</button> <button class="btn-option" onclick="selectPreset(this)">30m</button>
+                    </div>`;
+            } else if (type === 'hours') {
+                presetsContainer.innerHTML = `
+                    <div class="time-presets">
+                        <button class="btn-option" onclick="selectPreset(this)">1h</button> <button class="btn-option" onclick="selectPreset(this)">3h</button> <button class="btn-option" onclick="selectPreset(this)">6h</button> <button class="btn-option" onclick="selectPreset(this)">12h</button>
+                    </div>`;
+            } else if (type === 'weekly') {
+                daysContainer.innerHTML = `
+                    <div class="days-selector">
+                        <button class="day-btn" onclick="toggleDay(this)" data-day="1">M</button> <button class="day-btn" onclick="toggleDay(this)" data-day="2">T</button> <button class="day-btn" onclick="toggleDay(this)" data-day="3">W</button> <button class="day-btn" onclick="toggleDay(this)" data-day="4">TH</button> <button class="day-btn" onclick="toggleDay(this)" data-day="5">F</button> <button class="day-btn" onclick="toggleDay(this)" data-day="6">S</button> <button class="day-btn" onclick="toggleDay(this)" data-day="0">SU</button>
+                    </div>`;
+            } else if (type === 'custom') {
+                customContainer.innerHTML = `
+                    <input type="number" placeholder="Every X" class="form-input" id="customInterval" style="margin-top: 8px;">
+                    <select class="form-input" id="customUnit" style="margin-top: 8px;">
+                        <option value="minutes">Minutes</option> <option value="hours">Hours</option> <option value="days">Days</option> <option value="weeks">Weeks</option> <option value="months">Months</option>
+                    </select>`;
+            }
         }
 
         function saveTask() {
@@ -1367,7 +1461,13 @@
                 subtasks: subtasks,
                 tags: document.getElementById('taskTags').value.trim(),
                 priority: selectedPriority,
-                recurring: document.getElementById('recurringEnabled').checked ? { type: selectedRecurring } : null
+                recurring: document.getElementById('recurringEnabled').checked ? {
+                    type: selectedRecurring,
+                    preset: getSelectedPreset('#timePresets'),
+                    days: getSelectedDays('#daysSelector'),
+                    customInterval: document.getElementById('customInterval')?.value,
+                    customUnit: document.getElementById('customUnit')?.value
+                } : null
             };
             
             if (editingTaskId) {
