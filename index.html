@@ -1355,11 +1355,9 @@
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
             if (task) {
-                stopNotificationSequence(taskId);
                 task.completed = !task.completed;
                 saveToStorage();
                 renderTasks();
-                // If search is open, refresh results
                 if (document.getElementById('searchInput')) {
                     performSearch();
                 }
@@ -1373,7 +1371,6 @@
                 task.subtasks[subtaskIndex].completed = !task.subtasks[subtaskIndex].completed;
                 saveToStorage();
                 renderTasks();
-                // If search is open, refresh results
                 if (document.getElementById('searchInput')) {
                     performSearch();
                 }
@@ -1409,7 +1406,6 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
-            stopNotificationSequence(taskId);
             const now = new Date();
             let snoozeTime;
             
@@ -1454,7 +1450,6 @@
         }
         
         function confirmDelete(taskId) {
-            stopNotificationSequence(taskId);
             tasks = tasks.filter(t => t.id !== taskId);
             saveToStorage();
             renderTasks();
