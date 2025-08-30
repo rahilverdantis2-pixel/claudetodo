@@ -747,6 +747,85 @@
             color: white;
             text-shadow: 0 0 2px rgba(0,0,0,0.5);
         }
+
+        /* NEW View Toggle Styles */
+        .view-toggle {
+            display: flex;
+            background: #f0f0f0;
+            border-radius: 28px;
+            padding: 4px;
+        }
+        .toggle-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .toggle-btn.active {
+            background: #fff;
+            color: #2196F3;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* NEW Calendar Styles */
+        .calendar-container {
+            padding: 16px;
+            margin-bottom: 80px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .calendar-nav {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            text-align: center;
+        }
+        .calendar-day {
+            padding: 8px 0;
+            font-size: 14px;
+        }
+        .day-name {
+            font-weight: 600;
+            color: #999;
+            font-size: 12px;
+            padding-bottom: 8px;
+        }
+        .today {
+            font-weight: bold;
+            color: #2196F3;
+            border-bottom: 2px solid #2196F3;
+        }
+        .weekend {
+            color: #388e3c; /* Green color for weekends */
+        }
+        .other-month {
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -760,19 +839,24 @@
         </div>
     </div>
 
-    <div class="main-content" id="taskList">
-        <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-            </svg>
-            <h3>No tasks yet</h3>
-            <p>Add your first task using the quick add or plus button</p>
+    <div class="main-content" id="todoView">
+        <div id="taskList">
+            <!-- Task list is rendered here -->
         </div>
     </div>
+
+    <div id="calendarView" class="calendar-container" style="display: none;">
+        <!-- Calendar is rendered here -->
+    </div>
+
 
     <div class="bottom-nav">
         <div class="search-icon" onclick="openSearchSheet()">
             🔍
+        </div>
+        <div class="view-toggle">
+            <button id="todo-toggle" class="toggle-btn active" onclick="switchView('todo')" title="Todo List">📝</button>
+            <button id="calendar-toggle" class="toggle-btn" onclick="switchView('calendar')" title="Calendar">📅</button>
         </div>
         <div class="quick-add-container">
             <input type="text" class="quick-add" placeholder="Tap to quickly add task..." 
@@ -801,6 +885,7 @@
         let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null, "repeatEnabled": false, "repeatCount": 3, "stopWithButton": true}');
         let customSoundURL = notificationSettings.customSoundDataURL;
         let activeNotificationIntervals = {};
+        let calendarDate = new Date();
 
         function saveToStorage() {
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
@@ -1826,11 +1911,96 @@
             }
         }
 
+        // --- NEW CALENDAR LOGIC ---
+        function switchView(view) {
+            const todoView = document.getElementById('todoView');
+            const calendarView = document.getElementById('calendarView');
+            const todoToggle = document.getElementById('todo-toggle');
+            const calendarToggle = document.getElementById('calendar-toggle');
+
+            if (view === 'todo') {
+                todoView.style.display = 'block';
+                calendarView.style.display = 'none';
+                todoToggle.classList.add('active');
+                calendarToggle.classList.remove('active');
+            } else {
+                todoView.style.display = 'none';
+                calendarView.style.display = 'block';
+                todoToggle.classList.remove('active');
+                calendarToggle.classList.add('active');
+                renderCalendar();
+            }
+        }
+
+        function renderCalendar() {
+            const calendarContainer = document.getElementById('calendarView');
+            const month = calendarDate.getMonth();
+            const year = calendarDate.getFullYear();
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDayIndex = firstDay.getDay(); // 0 for Sunday, 1 for Monday...
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            let html = `
+                <div class="calendar-header">
+                    <button class="calendar-nav" onclick="prevMonth()">&#8249;</button>
+                    <span>${monthNames[month]} ${year}</span>
+                    <button class="calendar-nav" onclick="nextMonth()">&#8250;</button>
+                </div>
+                <div class="calendar-grid">
+            `;
+
+            // Day names header
+            dayNames.forEach(day => {
+                html += `<div class="calendar-day day-name">${day}</div>`;
+            });
+
+            // Padding for days before the 1st of the month
+            for (let i = 0; i < startDayIndex; i++) {
+                html += `<div class="calendar-day other-month"></div>`;
+            }
+
+            // Days of the current month
+            const today = new Date();
+            for (let day = 1; day <= daysInMonth; day++) {
+                let classes = 'calendar-day';
+                const currentDay = new Date(year, month, day);
+                const dayOfWeek = currentDay.getDay();
+
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                    classes += ' today';
+                }
+                if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
+                    classes += ' weekend';
+                }
+                html += `<div class="${classes}">${day}</div>`;
+            }
+
+            html += `</div>`; // Close calendar-grid
+            calendarContainer.innerHTML = html;
+        }
+
+        function prevMonth() {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+
         // Main loop: Run every second for accurate timers and notifications
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
+            renderCalendar(); // Pre-render the calendar on load
             // Run once immediately on load to set initial timer states correctly
             masterTick();
         });
