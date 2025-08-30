@@ -1355,6 +1355,7 @@
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
             if (task) {
+                stopNotificationSequence(taskId);
                 task.completed = !task.completed;
                 saveToStorage();
                 renderTasks();
@@ -1406,6 +1407,7 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
+            stopNotificationSequence(taskId);
             const now = new Date();
             let snoozeTime;
             
@@ -1450,6 +1452,7 @@
         }
         
         function confirmDelete(taskId) {
+            stopNotificationSequence(taskId);
             tasks = tasks.filter(t => t.id !== taskId);
             saveToStorage();
             renderTasks();
@@ -1569,20 +1572,17 @@
             slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
         }
 
-        // --- FULLY RESTORED NOTIFICATION LOGIC ---
         function testNotification() {
-            // Play the first sound immediately
             playNotificationSound();
             showTestBrowserNotification();
 
-            // Set up repeats if enabled
             const repeatEnabled = document.getElementById('repeatEnabled').checked;
             if (!repeatEnabled) return;
 
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
             if (repeatCount <= 1) return;
 
-            let repeatCounter = 1; // We've already played it once
+            let repeatCounter = 1;
             const interval = setInterval(() => {
                 if (repeatCounter >= repeatCount) {
                     clearInterval(interval);
@@ -1590,7 +1590,7 @@
                 }
                 playNotificationSound();
                 repeatCounter++;
-            }, 2000); // 2-second delay between subsequent sounds
+            }, 2000);
         }
         
         function showTestBrowserNotification() {
@@ -1613,13 +1613,10 @@
             }
         }
 
-        function playNotificationSound() {
-            const volumeSlider = document.getElementById('volumeSlider');
-            const liveVolume = volumeSlider ? volumeSlider.value / 100 : notificationSettings.volume / 100;
-
+        function playNotificationSound(volume = notificationSettings.volume / 100) {
             if (customSoundURL) {
                 const audio = new Audio(customSoundURL);
-                audio.volume = liveVolume;
+                audio.volume = volume;
                 audio.play().catch(e => console.error("Error playing custom sound:", e));
                 return;
             }
@@ -1635,14 +1632,13 @@
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
                 
-                gainNode.gain.setValueAtTime(liveVolume, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1);
                 
                 oscillator.start(audioContext.currentTime);
                 oscillator.stop(audioContext.currentTime + 1);
             } catch (error) {
                 console.error("Audio Context Error:", error);
-                alert('Sound playback not supported in this browser.');
             }
         }
 
@@ -1724,6 +1720,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
+            setInterval(checkDueTasks, 1000); // Check every second
         });
     </script>
 </body>
