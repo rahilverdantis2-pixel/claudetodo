@@ -1355,7 +1355,6 @@
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
             if (task) {
-                stopNotificationSequence(taskId);
                 task.completed = !task.completed;
                 saveToStorage();
                 renderTasks();
@@ -1407,7 +1406,6 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
-            stopNotificationSequence(taskId);
             const now = new Date();
             let snoozeTime;
             
@@ -1452,7 +1450,6 @@
         }
         
         function confirmDelete(taskId) {
-            stopNotificationSequence(taskId);
             tasks = tasks.filter(t => t.id !== taskId);
             saveToStorage();
             renderTasks();
@@ -1727,7 +1724,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
-            setInterval(checkDueTasks, 1000); // Start the timer to check for due tasks every second
         });
     </script>
 </body>
