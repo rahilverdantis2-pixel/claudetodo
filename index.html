@@ -808,6 +808,13 @@
         .calendar-day {
             padding: 8px 0;
             font-size: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+            width: 36px;
+            margin: 0 auto;
         }
         .day-name {
             font-weight: 600;
@@ -819,12 +826,28 @@
             font-weight: bold;
             color: #2196F3;
             border-bottom: 2px solid #2196F3;
+            border-radius: 0; /* Override circle for underscore */
         }
         .weekend {
             color: #388e3c; /* Green color for weekends */
         }
         .other-month {
             color: #ccc;
+        }
+        .calendar-day.has-tasks {
+            cursor: pointer;
+            border: 2px solid #bbdefb; /* Light blue ring */
+            color: #1976d2;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .calendar-day.has-tasks:hover {
+            background-color: #e3f2fd;
+        }
+        .calendar-day.has-tasks.today {
+            border-color: #2196F3; /* Stronger blue for today's ring */
+            border-radius: 50%; /* Restore circle for today if it has tasks */
+            border-bottom: 2px solid transparent; /* Hide underscore to avoid clash */
         }
     </style>
 </head>
@@ -882,6 +905,7 @@
         let selectedPriority = 'low';
         let selectedRecurring = null;
         let currentFilter = 'all';
+        let selectedDateForFilter = null; // For calendar clicks
         let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null, "repeatEnabled": false, "repeatCount": 3, "stopWithButton": true}');
         let customSoundURL = notificationSettings.customSoundDataURL;
         let activeNotificationIntervals = {};
@@ -1108,6 +1132,7 @@
                     case 'upcoming': return task.date && new Date(task.date) > tomorrow;
                     case 'high': case 'medium': case 'low': return task.priority === currentFilter;
                     case 'recurring': return task.recurring;
+                    case 'date': return task.date === selectedDateForFilter;
                     default: return true;
                 }
             });
@@ -1775,7 +1800,12 @@
             updateSliderFill(slider);
         }
 
-        function applyFilter(filter) { currentFilter = filter; renderTasks(); closeBottomSheet(); }
+        function applyFilter(filter) { 
+            currentFilter = filter; 
+            document.querySelector('.header h1').textContent = 'Todo'; // Reset header
+            renderTasks(); 
+            closeBottomSheet(); 
+        }
         
         function openSearchSheet() {
             const contentEl = document.getElementById('bottomSheetContent');
@@ -1923,6 +1953,7 @@
                 calendarView.style.display = 'none';
                 todoToggle.classList.add('active');
                 calendarToggle.classList.remove('active');
+                renderTasks(); // Re-render tasks when switching to this view
             } else {
                 todoView.style.display = 'none';
                 calendarView.style.display = 'block';
@@ -1936,6 +1967,9 @@
             const calendarContainer = document.getElementById('calendarView');
             const month = calendarDate.getMonth();
             const year = calendarDate.getFullYear();
+
+            // Create a set of dates that have tasks for quick lookup
+            const datesWithTasks = new Set(tasks.filter(t => t.date).map(t => t.date));
 
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
@@ -1961,7 +1995,7 @@
 
             // Padding for days before the 1st of the month
             for (let i = 0; i < startDayIndex; i++) {
-                html += `<div class="calendar-day other-month"></div>`;
+                html += `<div></div>`; // Use empty div for placeholder
             }
 
             // Days of the current month
@@ -1970,6 +2004,10 @@
                 let classes = 'calendar-day';
                 const currentDay = new Date(year, month, day);
                 const dayOfWeek = currentDay.getDay();
+                
+                // Format date as YYYY-MM-DD for comparison
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                let clickHandler = '';
 
                 if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
                     classes += ' today';
@@ -1977,7 +2015,11 @@
                 if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
                     classes += ' weekend';
                 }
-                html += `<div class="${classes}">${day}</div>`;
+                if (datesWithTasks.has(dateString)) {
+                    classes += ' has-tasks';
+                    clickHandler = `onclick="showTasksForDate('${dateString}')"`;
+                }
+                html += `<div class="${classes}" ${clickHandler}>${day}</div>`;
             }
 
             html += `</div>`; // Close calendar-grid
@@ -1994,13 +2036,23 @@
             renderCalendar();
         }
 
+        function showTasksForDate(dateString) {
+            currentFilter = 'date';
+            selectedDateForFilter = dateString;
+            
+            // Update header for user feedback
+            const dateObj = new Date(dateString + 'T00:00:00'); // Avoid timezone issues
+            document.querySelector('.header h1').textContent = `Tasks for ${dateObj.toLocaleDateString()}`;
+
+            switchView('todo');
+        }
+
 
         // Main loop: Run every second for accurate timers and notifications
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
-            renderCalendar(); // Pre-render the calendar on load
             // Run once immediately on load to set initial timer states correctly
             masterTick();
         });
