@@ -735,7 +735,7 @@
         </div>
     </div>
 
-    <!-- Main Bottom Sheet (For Smart Add/Edit Task) -->
+    <!-- Main Bottom Sheet (For All Actions) -->
     <div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="closeBottomSheet()"></div>
     <div class="bottom-sheet" id="mainBottomSheet">
         <div class="bottom-sheet-handle"></div>
@@ -965,10 +965,10 @@
             return `
                 <div class="task-card" onclick="editTask('${task.id}', event)">
                     <div class="task-actions">
-                        <button class="action-btn btn-snooze" onclick="snoozeTask('${task.id}', event)" title="Snooze">
+                        <button class="action-btn btn-snooze" onclick="openSnoozeSheet('${task.id}', event)" title="Snooze">
                             ⏰
                         </button>
-                        <button class="action-btn btn-delete" onclick="deleteTask('${task.id}', event)" title="Delete">
+                        <button class="action-btn btn-delete" onclick="openDeleteSheet('${task.id}', event)" title="Delete">
                             🗑️
                         </button>
                     </div>
@@ -1127,8 +1127,7 @@
                 populateSmartSheet(taskToEdit);
             }
 
-            document.getElementById('bottomSheetOverlay').classList.add('active');
-            document.getElementById('mainBottomSheet').classList.add('active');
+            openBottomSheet();
             
             setTimeout(() => {
                 document.getElementById('smartTaskTitle').focus();
@@ -1136,14 +1135,12 @@
         }
 
         function populateSmartSheet(task) {
-            // Populate text fields
             document.getElementById('smartTaskTitle').value = task.title || '';
             document.getElementById('smartTaskDescription').value = task.description || '';
             document.getElementById('smartTaskDate').value = task.date || '';
             document.getElementById('smartTaskTime').value = task.time || '';
             document.getElementById('smartTaskTags').value = task.tags || '';
 
-            // Populate priority
             selectedPriority = task.priority || 'low';
             document.querySelectorAll('#smart-priority-options .btn-option').forEach(btn => {
                 if (btn.textContent.toLowerCase() === selectedPriority) {
@@ -1151,7 +1148,6 @@
                 }
             });
 
-            // Populate subtasks
             const subtaskContainer = document.getElementById('smartSubtaskContainer');
             if (task.subtasks && task.subtasks.length > 0) {
                 task.subtasks.forEach(subtask => {
@@ -1162,7 +1158,6 @@
                 });
             }
 
-            // Populate recurring
             if (task.recurring) {
                 document.getElementById('smartRecurringEnabled').checked = true;
                 document.getElementById('smartRecurringDetails').classList.add('active');
@@ -1173,18 +1168,16 @@
                             btn.classList.add('active');
                         }
                     });
-                    showSmartRecurringPresets(selectedRecurring); // To show days, presets etc.
+                    showSmartRecurringPresets(selectedRecurring);
                 }
             }
 
-            // Show relevant sections
             if (task.date || task.time) toggleSmartOptions('date');
             if (task.priority) toggleSmartOptions('priority');
             if (task.tags) toggleSmartOptions('tags');
             if (task.subtasks && task.subtasks.length > 0) toggleSmartOptions('subtasks');
             if (task.recurring) toggleSmartOptions('recurring');
 
-            // Final UI adjustments
             autoGrow(document.getElementById('smartTaskTitle'));
             autoGrow(document.getElementById('smartTaskDescription'));
             toggleSaveButtonState();
@@ -1250,26 +1243,13 @@
             customContainer.innerHTML = '';
             
             if (type === 'minutes') {
-                presetsContainer.innerHTML = `
-                    <div class="time-presets">
-                        <button class="btn-option" onclick="selectPreset(this)">1m</button> <button class="btn-option" onclick="selectPreset(this)">5m</button> <button class="btn-option" onclick="selectPreset(this)">15m</button> <button class="btn-option" onclick="selectPreset(this)">30m</button>
-                    </div>`;
+                presetsContainer.innerHTML = `<div class="time-presets"><button class="btn-option" onclick="selectPreset(this)">1m</button><button class="btn-option" onclick="selectPreset(this)">5m</button><button class="btn-option" onclick="selectPreset(this)">15m</button><button class="btn-option" onclick="selectPreset(this)">30m</button></div>`;
             } else if (type === 'hours') {
-                presetsContainer.innerHTML = `
-                    <div class="time-presets">
-                        <button class="btn-option" onclick="selectPreset(this)">1h</button> <button class="btn-option" onclick="selectPreset(this)">3h</button> <button class="btn-option" onclick="selectPreset(this)">6h</button> <button class="btn-option" onclick="selectPreset(this)">12h</button>
-                    </div>`;
+                presetsContainer.innerHTML = `<div class="time-presets"><button class="btn-option" onclick="selectPreset(this)">1h</button><button class="btn-option" onclick="selectPreset(this)">3h</button><button class="btn-option" onclick="selectPreset(this)">6h</button><button class="btn-option" onclick="selectPreset(this)">12h</button></div>`;
             } else if (type === 'weekly') {
-                daysContainer.innerHTML = `
-                    <div class="days-selector">
-                        <button class="day-btn" onclick="toggleDay(this)" data-day="1">M</button> <button class="day-btn" onclick="toggleDay(this)" data-day="2">T</button> <button class="day-btn" onclick="toggleDay(this)" data-day="3">W</button> <button class="day-btn" onclick="toggleDay(this)" data-day="4">TH</button> <button class="day-btn" onclick="toggleDay(this)" data-day="5">F</button> <button class="day-btn" onclick="toggleDay(this)" data-day="6">S</button> <button class="day-btn" onclick="toggleDay(this)" data-day="0">SU</button>
-                    </div>`;
+                daysContainer.innerHTML = `<div class="days-selector"><button class="day-btn" onclick="toggleDay(this)" data-day="1">M</button><button class="day-btn" onclick="toggleDay(this)" data-day="2">T</button><button class="day-btn" onclick="toggleDay(this)" data-day="3">W</button><button class="day-btn" onclick="toggleDay(this)" data-day="4">TH</button><button class="day-btn" onclick="toggleDay(this)" data-day="5">F</button><button class="day-btn" onclick="toggleDay(this)" data-day="6">S</button><button class="day-btn" onclick="toggleDay(this)" data-day="0">SU</button></div>`;
             } else if (type === 'custom') {
-                customContainer.innerHTML = `
-                    <input type="number" placeholder="Every X" class="form-input" id="smartCustomInterval" style="margin-top: 8px;">
-                    <select class="form-input" id="smartCustomUnit" style="margin-top: 8px;">
-                        <option value="minutes">Minutes</option> <option value="hours">Hours</option> <option value="days">Days</option> <option value="weeks">Weeks</option> <option value="months">Months</option>
-                    </select>`;
+                customContainer.innerHTML = `<input type="number" placeholder="Every X" class="form-input" id="smartCustomInterval" style="margin-top: 8px;"><select class="form-input" id="smartCustomUnit" style="margin-top: 8px;"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option><option value="weeks">Weeks</option><option value="months">Months</option></select>`;
             }
         }
 
@@ -1338,9 +1318,17 @@
             return Array.from(activeDays).map(btn => btn.dataset.day);
         }
 
+        function openBottomSheet() {
+            document.getElementById('bottomSheetOverlay').classList.add('active');
+            document.getElementById('mainBottomSheet').classList.add('active');
+        }
+
         function closeBottomSheet() {
             document.getElementById('bottomSheetOverlay').classList.remove('active');
             document.getElementById('mainBottomSheet').classList.remove('active');
+            setTimeout(() => { // Clear content after transition
+                document.getElementById('bottomSheetContent').innerHTML = '';
+            }, 300);
             editingTaskId = null;
             selectedPriority = 'low';
             selectedRecurring = null;
@@ -1374,39 +1362,31 @@
             }
         }
 
-        // --- FULLY RESTORED SNOOZE AND DELETE FUNCTIONS ---
+        // --- SNOOZE AND DELETE FUNCTIONS USING BOTTOM SHEET ---
 
-        function snoozeTask(taskId, event) {
+        function openSnoozeSheet(taskId, event) {
             event.stopPropagation();
-            
+            const contentEl = document.getElementById('bottomSheetContent');
             const snoozeOptions = [
                 { label: '5 minutes', minutes: 5 }, { label: '15 minutes', minutes: 15 },
                 { label: '30 minutes', minutes: 30 }, { label: '1 hour', minutes: 60 },
                 { label: '2 hours', minutes: 120 }, { label: 'Tomorrow 9 AM', minutes: null }
             ];
             
-            const modalId = 'snooze-' + taskId + '-' + Date.now();
-            const modal = document.createElement('div');
-            modal.className = 'modal active';
-            modal.id = modalId;
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h2>Snooze Task</h2>
-                    <div class="snooze-options" style="display: grid; gap: 8px; margin: 16px 0;">
-                        ${snoozeOptions.map(option => `<button class="btn-option" onclick="applySnooze('${taskId}', ${option.minutes}, '${modalId}')">${option.label}</button>`).join('')}
-                        <input type="number" placeholder="Custom minutes" id="customSnooze-${modalId}" class="form-input" style="margin-top: 8px;">
-                        <button class="btn-option" onclick="applyCustomSnooze('${taskId}', '${modalId}')">Custom Snooze</button>
-                    </div>
-                    <div class="modal-actions">
-                        <button class="btn btn-cancel" onclick="closeDynamicModal('${modalId}')">Cancel</button>
-                    </div>
+            contentEl.innerHTML = `
+                <h2 style="margin-bottom: 16px;">Snooze Task</h2>
+                <div style="display: grid; gap: 8px;">
+                    ${snoozeOptions.map(option => `<button class="btn-option" onclick="applySnooze('${taskId}', ${option.minutes})">${option.label}</button>`).join('')}
+                    <input type="number" placeholder="Custom minutes" id="customSnoozeInput" class="form-input" style="margin-top: 8px;">
+                    <button class="btn-option" onclick="applyCustomSnooze('${taskId}')">Custom Snooze</button>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-cancel" onclick="closeBottomSheet()">Cancel</button>
                 </div>`;
-            
-            document.body.appendChild(modal);
-            modal.addEventListener('click', e => { if (e.target === modal) closeDynamicModal(modalId); });
+            openBottomSheet();
         }
         
-        function applySnooze(taskId, minutes, modalId) {
+        function applySnooze(taskId, minutes) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
@@ -1427,53 +1407,40 @@
             
             saveToStorage();
             renderTasks();
-            closeDynamicModal(modalId);
+            closeBottomSheet();
         }
         
-        function applyCustomSnooze(taskId, modalId) {
-            const minutes = parseInt(document.getElementById(`customSnooze-${modalId}`).value);
+        function applyCustomSnooze(taskId) {
+            const minutes = parseInt(document.getElementById('customSnoozeInput').value);
             if (!minutes || minutes <= 0) {
                 alert('Please enter a valid number of minutes');
                 return;
             }
-            applySnooze(taskId, minutes, modalId);
+            applySnooze(taskId, minutes);
         }
         
-        function deleteTask(taskId, event) {
+        function openDeleteSheet(taskId, event) {
             event.stopPropagation();
-            
-            const modalId = 'delete-' + taskId + '-' + Date.now();
-            const modal = document.createElement('div');
-            modal.className = 'modal active';
-            modal.id = modalId;
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <h2>Delete Task</h2>
-                    <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-                    <div class="modal-actions" style="margin-top: 24px;">
-                        <button class="btn btn-cancel" onclick="closeDynamicModal('${modalId}')">Cancel</button>
-                        <button class="btn btn-delete" onclick="confirmDelete('${taskId}', '${modalId}')" style="background: #d32f2f; color: white;">Delete</button>
-                    </div>
+            const contentEl = document.getElementById('bottomSheetContent');
+            contentEl.innerHTML = `
+                <h2 style="margin-bottom: 8px;">Delete Task?</h2>
+                <p>This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button class="btn btn-cancel" onclick="closeBottomSheet()">Cancel</button>
+                    <button class="btn btn-delete" onclick="confirmDelete('${taskId}')" style="background: #d32f2f; color: white;">Delete</button>
                 </div>
             `;
-            
-            document.body.appendChild(modal);
-            modal.addEventListener('click', e => { if (e.target === modal) closeDynamicModal(modalId); });
+            openBottomSheet();
         }
         
-        function confirmDelete(taskId, modalId) {
+        function confirmDelete(taskId) {
             tasks = tasks.filter(t => t.id !== taskId);
             saveToStorage();
             renderTasks();
-            closeDynamicModal(modalId);
-        }
-        
-        function closeDynamicModal(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) modal.remove();
+            closeBottomSheet();
         }
 
-        // --- END OF RESTORED FUNCTIONS ---
+        // --- OTHER MODAL FUNCTIONS ---
 
         function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
         function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
