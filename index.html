@@ -302,6 +302,12 @@
             padding: 0 20px 20px;
         }
 
+        .sheet-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
         /* Smart Add Task Sheet Styles */
         .smart-add-container {
             display: flex;
@@ -600,10 +606,6 @@
             color: white;
         }
 
-        .settings-modal .modal-content {
-            max-width: 400px;
-        }
-
         .volume-slider {
             width: 100%;
             margin: 12px 0;
@@ -619,12 +621,12 @@
             margin: 8px 0;
         }
 
-        .filter-options {
+        .filter-options, .snooze-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
             gap: 8px;
-            margin-top: 16px;
         }
+        .filter-options { grid-template-columns: repeat(2, 1fr); }
+        .snooze-grid { grid-template-columns: repeat(3, 1fr); }
 
         .completed-section {
             margin-top: 24px;
@@ -703,11 +705,11 @@
 </head>
 <body>
     <div class="header">
-        <div class="settings-icon" onclick="openSettings()">
+        <div class="settings-icon" onclick="openSettingsSheet()">
             ⚙️
         </div>
         <h1>Todo</h1>
-        <div class="filter-icon" onclick="openFilter()">
+        <div class="filter-icon" onclick="openFilterSheet()">
             🔽
         </div>
     </div>
@@ -744,74 +746,7 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div class="modal" id="settingsModal">
-        <div class="modal-content settings-modal">
-            <h2>Notification Settings</h2>
-            
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="notificationsEnabled" checked>
-                    <label for="notificationsEnabled">Enable Notifications</label>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Notification Duration</label>
-                <input type="range" class="volume-slider" id="notificationDuration" 
-                       min="5" max="60" value="30">
-                <span id="durationDisplay">30 seconds</span>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Volume</label>
-                <input type="range" class="volume-slider" id="volumeSlider" 
-                       min="0" max="100" value="50">
-                <span id="volumeDisplay">50%</span>
-            </div>
-
-            <div class="form-group">
-                <button class="notification-test" onclick="testNotification()">
-                    🔊 Test Notification Sound
-                </button>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Custom Sound</label>
-                <input type="file" accept="audio/*" id="customSound" onchange="handleCustomSound(event)">
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn btn-save" onclick="closeSettings()">Done</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filter Modal -->
-    <div class="modal" id="filterModal">
-        <div class="modal-content">
-            <h2>Filter Tasks</h2>
-            
-            <div class="filter-options">
-                <button class="btn-option" onclick="applyFilter('all')">All Tasks</button>
-                <button class="btn-option" onclick="applyFilter('completed')">Completed</button>
-                <button class="btn-option" onclick="applyFilter('remaining')">Remaining</button>
-                <button class="btn-option" onclick="applyFilter('today')">Today</button>
-                <button class="btn-option" onclick="applyFilter('tomorrow')">Tomorrow</button>
-                <button class="btn-option" onclick="applyFilter('upcoming')">Upcoming</button>
-                <button class="btn-option" onclick="applyFilter('high')">High Priority</button>
-                <button class="btn-option" onclick="applyFilter('medium')">Medium Priority</button>
-                <button class="btn-option" onclick="applyFilter('low')">Low Priority</button>
-                <button class="btn-option" onclick="applyFilter('recurring')">Recurring</button>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn btn-cancel" onclick="closeFilter()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Search Modal -->
+    <!-- Search Modal (The only remaining modal) -->
     <div class="modal" id="searchModal">
         <div class="modal-content search-modal">
             <input type="text" class="search-bar" placeholder="Search tasks..." 
@@ -1092,7 +1027,7 @@
                     </div>
                     <div id="smart-recurring-options" class="smart-add-options">
                         <div class="checkbox-group">
-                            <input type="checkbox" id="smartRecurringEnabled" onchange="document.getElementById('smartRecurringDetails').classList.toggle('active', this.checked)">
+                            <input type="checkbox" id="smartRecurringEnabled" onchange="syncRecurringUI()">
                             <label for="smartRecurringEnabled">Enable Recurring Task</label>
                         </div>
                         <div class="recurring-options" id="smartRecurringDetails">
@@ -1116,7 +1051,7 @@
                             <button id="priority-btn" class="smart-action-btn" onclick="toggleSmartOptions('priority')" title="Set Priority">🚩</button>
                             <button id="tags-btn" class="smart-action-btn" onclick="toggleSmartOptions('tags')" title="Add Tags">🏷️</button>
                             <button id="subtasks-btn" class="smart-action-btn" onclick="toggleSmartOptions('subtasks')" title="Add Subtasks">📝</button>
-                            <button id="recurring-btn" class="smart-action-btn" onclick="toggleSmartOptions('recurring')" title="Set Recurring">🔄</button>
+                            <button id="recurring-btn" class="smart-action-btn" onclick="toggleRecurringDirectly()" title="Set Recurring">🔄</button>
                         </div>
                         <button id="smartSaveBtn" onclick="saveSmartTask()" title="Add Task" disabled>⬆️</button>
                     </div>
@@ -1160,7 +1095,6 @@
 
             if (task.recurring) {
                 document.getElementById('smartRecurringEnabled').checked = true;
-                document.getElementById('smartRecurringDetails').classList.add('active');
                 selectedRecurring = task.recurring.type;
                 if (selectedRecurring) {
                     document.querySelectorAll('#smartRecurringDetails .recurring-buttons .btn-option').forEach(btn => {
@@ -1171,12 +1105,13 @@
                     showSmartRecurringPresets(selectedRecurring);
                 }
             }
+            syncRecurringUI();
 
-            if (task.date || task.time) toggleSmartOptions('date');
-            if (task.priority) toggleSmartOptions('priority');
-            if (task.tags) toggleSmartOptions('tags');
-            if (task.subtasks && task.subtasks.length > 0) toggleSmartOptions('subtasks');
-            if (task.recurring) toggleSmartOptions('recurring');
+            if (task.date || task.time) toggleSmartOptions('date', true);
+            if (task.priority) toggleSmartOptions('priority', true);
+            if (task.tags) toggleSmartOptions('tags', true);
+            if (task.subtasks && task.subtasks.length > 0) toggleSmartOptions('subtasks', true);
+            if (task.recurring) toggleSmartOptions('recurring', true);
 
             autoGrow(document.getElementById('smartTaskTitle'));
             autoGrow(document.getElementById('smartTaskDescription'));
@@ -1193,19 +1128,41 @@
             document.getElementById('smartSaveBtn').disabled = !title;
         }
 
-        function toggleSmartOptions(optionType) {
-            const options = ['date', 'priority', 'tags', 'subtasks', 'recurring'];
-            options.forEach(opt => {
-                const container = document.getElementById(`smart-${opt}-options`);
-                const button = document.getElementById(`${opt}-btn`);
-                if (opt === optionType) {
-                    container.classList.toggle('active');
-                    button.classList.toggle('active');
-                } else {
-                    container.classList.remove('active');
-                    button.classList.remove('active');
-                }
-            });
+        function toggleSmartOptions(optionType, forceOpen = false) {
+            const container = document.getElementById(`smart-${optionType}-options`);
+            const button = document.getElementById(`${optionType}-btn`);
+            
+            if (forceOpen) {
+                container.classList.add('active');
+                button.classList.add('active');
+            } else {
+                const shouldBeActive = !container.classList.contains('active');
+                // Deactivate all others
+                ['date', 'priority', 'tags', 'subtasks', 'recurring'].forEach(opt => {
+                    if (opt !== optionType) {
+                        document.getElementById(`smart-${opt}-options`).classList.remove('active');
+                        document.getElementById(`${opt}-btn`).classList.remove('active');
+                    }
+                });
+                // Toggle the selected one
+                container.classList.toggle('active', shouldBeActive);
+                button.classList.toggle('active', shouldBeActive);
+            }
+        }
+
+        function toggleRecurringDirectly() {
+            const checkbox = document.getElementById('smartRecurringEnabled');
+            checkbox.checked = !checkbox.checked;
+            syncRecurringUI();
+            toggleSmartOptions('recurring', checkbox.checked);
+        }
+
+        function syncRecurringUI() {
+            const checkbox = document.getElementById('smartRecurringEnabled');
+            const details = document.getElementById('smartRecurringDetails');
+            const button = document.getElementById('recurring-btn');
+            details.classList.toggle('active', checkbox.checked);
+            button.classList.toggle('active', checkbox.checked);
         }
 
         function selectSmartPriority(priority, button) {
@@ -1326,7 +1283,7 @@
         function closeBottomSheet() {
             document.getElementById('bottomSheetOverlay').classList.remove('active');
             document.getElementById('mainBottomSheet').classList.remove('active');
-            setTimeout(() => { // Clear content after transition
+            setTimeout(() => {
                 document.getElementById('bottomSheetContent').innerHTML = '';
             }, 300);
             editingTaskId = null;
@@ -1368,17 +1325,18 @@
             event.stopPropagation();
             const contentEl = document.getElementById('bottomSheetContent');
             const snoozeOptions = [
-                { label: '5 minutes', minutes: 5 }, { label: '15 minutes', minutes: 15 },
-                { label: '30 minutes', minutes: 30 }, { label: '1 hour', minutes: 60 },
-                { label: '2 hours', minutes: 120 }, { label: 'Tomorrow 9 AM', minutes: null }
+                { label: '5 min', minutes: 5 }, { label: '15 min', minutes: 15 }, { label: '30 min', minutes: 30 },
+                { label: '1 hour', minutes: 60 }, { label: '2 hours', minutes: 120 }, { label: 'Tomorrow 9 AM', minutes: null }
             ];
             
             contentEl.innerHTML = `
-                <h2 style="margin-bottom: 16px;">Snooze Task</h2>
-                <div style="display: grid; gap: 8px;">
+                <div class="sheet-title">Snooze Task</div>
+                <div class="snooze-grid">
                     ${snoozeOptions.map(option => `<button class="btn-option" onclick="applySnooze('${taskId}', ${option.minutes})">${option.label}</button>`).join('')}
-                    <input type="number" placeholder="Custom minutes" id="customSnoozeInput" class="form-input" style="margin-top: 8px;">
-                    <button class="btn-option" onclick="applyCustomSnooze('${taskId}')">Custom Snooze</button>
+                </div>
+                <div style="margin-top: 16px;">
+                    <input type="number" placeholder="Custom minutes" id="customSnoozeInput" class="form-input">
+                    <button class="btn-option" style="width: 100%; margin-top: 8px;" onclick="applyCustomSnooze('${taskId}')">Custom Snooze</button>
                 </div>
                 <div class="modal-actions">
                     <button class="btn btn-cancel" onclick="closeBottomSheet()">Cancel</button>
@@ -1423,7 +1381,7 @@
             event.stopPropagation();
             const contentEl = document.getElementById('bottomSheetContent');
             contentEl.innerHTML = `
-                <h2 style="margin-bottom: 8px;">Delete Task?</h2>
+                <div class="sheet-title">Delete Task?</div>
                 <p>This action cannot be undone.</p>
                 <div class="modal-actions">
                     <button class="btn btn-cancel" onclick="closeBottomSheet()">Cancel</button>
@@ -1440,18 +1398,81 @@
             closeBottomSheet();
         }
 
-        // --- OTHER MODAL FUNCTIONS ---
+        // --- OTHER SHEET-BASED FUNCTIONS ---
 
-        function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
-        function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+        function openSettingsSheet() {
+            const contentEl = document.getElementById('bottomSheetContent');
+            contentEl.innerHTML = `
+                <div class="sheet-title">Notification Settings</div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="notificationsEnabled" ${notificationSettings.enabled ? 'checked' : ''}>
+                        <label for="notificationsEnabled">Enable Notifications</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notification Duration</label>
+                    <input type="range" class="volume-slider" id="notificationDuration" min="5" max="60" value="${notificationSettings.duration}">
+                    <span id="durationDisplay">${notificationSettings.duration} seconds</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Volume</label>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
+                    <span id="volumeDisplay">${notificationSettings.volume}%</span>
+                </div>
+                <div class="form-group">
+                    <button class="notification-test" onclick="testNotification()">🔊 Test Notification Sound</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Custom Sound</label>
+                    <input type="file" accept="audio/*" id="customSound" onchange="handleCustomSound(event)">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-save" onclick="saveAndCloseSettings()">Done</button>
+                </div>
+            `;
+            document.getElementById('notificationDuration').addEventListener('input', updateDurationDisplay);
+            document.getElementById('volumeSlider').addEventListener('input', updateVolumeDisplay);
+            openBottomSheet();
+        }
+
+        function saveAndCloseSettings() {
+            notificationSettings.enabled = document.getElementById('notificationsEnabled').checked;
+            notificationSettings.duration = parseInt(document.getElementById('notificationDuration').value);
+            notificationSettings.volume = parseInt(document.getElementById('volumeSlider').value);
+            saveNotificationSettings();
+            closeBottomSheet();
+        }
+
+        function openFilterSheet() {
+            const contentEl = document.getElementById('bottomSheetContent');
+            contentEl.innerHTML = `
+                <div class="sheet-title">Filter Tasks</div>
+                <div class="filter-options">
+                    <button class="btn-option" onclick="applyFilter('all')">All Tasks</button>
+                    <button class="btn-option" onclick="applyFilter('completed')">Completed</button>
+                    <button class="btn-option" onclick="applyFilter('remaining')">Remaining</button>
+                    <button class="btn-option" onclick="applyFilter('today')">Today</button>
+                    <button class="btn-option" onclick="applyFilter('tomorrow')">Tomorrow</button>
+                    <button class="btn-option" onclick="applyFilter('upcoming')">Upcoming</button>
+                    <button class="btn-option" onclick="applyFilter('high')">High Priority</button>
+                    <button class="btn-option" onclick="applyFilter('medium')">Medium Priority</button>
+                    <button class="btn-option" onclick="applyFilter('low')">Low Priority</button>
+                    <button class="btn-option" onclick="applyFilter('recurring')">Recurring</button>
+                </div>
+                 <div class="modal-actions">
+                    <button class="btn btn-cancel" onclick="closeBottomSheet()">Close</button>
+                </div>
+            `;
+            openBottomSheet();
+        }
+
         function testNotification() { alert('Testing notifications...'); }
         function handleCustomSound(event) { if (event.target.files[0]) alert('Custom sound uploaded!'); }
         function updateDurationDisplay() { document.getElementById('durationDisplay').textContent = `${document.getElementById('notificationDuration').value} seconds`; }
         function updateVolumeDisplay() { document.getElementById('volumeDisplay').textContent = `${document.getElementById('volumeSlider').value}%`; }
 
-        function openFilter() { document.getElementById('filterModal').classList.add('active'); }
-        function closeFilter() { document.getElementById('filterModal').classList.remove('active'); }
-        function applyFilter(filter) { currentFilter = filter; renderTasks(); closeFilter(); }
+        function applyFilter(filter) { currentFilter = filter; renderTasks(); closeBottomSheet(); }
         function openSearch() { document.getElementById('searchModal').classList.add('active'); document.getElementById('searchInput').focus(); }
         function closeSearch() { document.getElementById('searchModal').classList.remove('active'); }
 
@@ -1465,8 +1486,6 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('notificationDuration').addEventListener('input', updateDurationDisplay);
-            document.getElementById('volumeSlider').addEventListener('input', updateVolumeDisplay);
             renderTasks();
         });
 
