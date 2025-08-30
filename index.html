@@ -938,7 +938,7 @@
             container.innerHTML = html;
         }
 
-        function renderTaskCard(task) {
+        function renderTaskCard(task, isSearchResult = false) {
             const timeRemaining = task.date && task.time ? getTimeRemaining(task.date, task.time) : null;
             const hasTimer = task.date && task.time;
 
@@ -955,8 +955,10 @@
                 `;
             }
             
+            const onclickAction = isSearchResult ? `editTaskFromSearch('${task.id}', event)` : `editTask('${task.id}', event)`;
+
             return `
-                <div class="task-card" onclick="editTask('${task.id}', event)">
+                <div class="task-card" onclick="${onclickAction}">
                     <div class="task-actions">
                         <button class="action-btn btn-snooze" onclick="openSnoozeSheet('${task.id}', event)" title="Snooze">
                             ⏰
@@ -1350,6 +1352,14 @@
             }
         }
 
+        function editTaskFromSearch(taskId, event) {
+            if (event.target.closest('.task-checkbox, .task-actions, .subtask-toggle, .highlighted-url')) return;
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                openSmartAddTaskSheet(task);
+            }
+        }
+
         function toggleTask(taskId, event) {
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
@@ -1358,6 +1368,10 @@
                 task.completed = !task.completed;
                 saveToStorage();
                 renderTasks();
+                // If search is open, refresh results
+                if (document.getElementById('searchInput')) {
+                    performSearch();
+                }
             }
         }
 
@@ -1684,6 +1698,7 @@
         }
 
         function applyFilter(filter) { currentFilter = filter; renderTasks(); closeBottomSheet(); }
+        
         function openSearchSheet() {
             const contentEl = document.getElementById('bottomSheetContent');
             contentEl.innerHTML = `
@@ -1698,25 +1713,27 @@
             openBottomSheet();
             setTimeout(() => document.getElementById('searchInput').focus(), 100);
         }
-        function closeSearch() { document.getElementById('searchModal').classList.remove('active'); }
 
         function performSearch() {
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
             const resultsContainer = document.getElementById('searchResults');
-            if (!query) { resultsContainer.innerHTML = ''; return; }
+            if (!query) {
+                resultsContainer.innerHTML = '';
+                return;
+            }
             
-            const matchingTasks = tasks.filter(task => task.title.toLowerCase().includes(query));
-            resultsContainer.innerHTML = matchingTasks.length ? matchingTasks.map(renderTaskCard).join('') : '<p>No tasks found</p>';
+            const matchingTasks = tasks.filter(task => 
+                task.title.toLowerCase().includes(query) ||
+                (task.description && task.description.toLowerCase().includes(query))
+            );
+            
+            resultsContainer.innerHTML = matchingTasks.length 
+                ? matchingTasks.map(task => renderTaskCard(task, true)).join('') 
+                : '<p style="text-align: center; color: #999; padding: 20px;">No tasks found</p>';
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
-        });
-
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('modal')) {
-                event.target.classList.remove('active');
-            }
         });
     </script>
 </body>
