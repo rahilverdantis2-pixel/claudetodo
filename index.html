@@ -302,7 +302,7 @@
             padding: 0 20px 20px;
         }
 
-        /* NEW Smart Add Task Sheet Styles */
+        /* Smart Add Task Sheet Styles */
         .smart-add-container {
             display: flex;
             flex-direction: column;
@@ -472,11 +472,6 @@
 
         .form-input:focus, .form-textarea:focus {
             border-color: #2196F3;
-        }
-
-        .form-textarea {
-            min-height: 80px;
-            resize: vertical;
         }
 
         .datetime-group {
@@ -740,84 +735,12 @@
         </div>
     </div>
 
-    <!-- Main Bottom Sheet (For Smart Add Task) -->
+    <!-- Main Bottom Sheet (For Smart Add/Edit Task) -->
     <div class="bottom-sheet-overlay" id="bottomSheetOverlay" onclick="closeBottomSheet()"></div>
     <div class="bottom-sheet" id="mainBottomSheet">
         <div class="bottom-sheet-handle"></div>
         <div class="bottom-sheet-content" id="bottomSheetContent">
             <!-- Content is injected here by JavaScript -->
-        </div>
-    </div>
-
-    <!-- Task Modal (Used for editing) -->
-    <div class="modal" id="taskModal">
-        <div class="modal-content">
-            <h2 id="modalTitle">Add New Task</h2>
-            
-            <div class="form-group">
-                <label class="form-label">Title *</label>
-                <input type="text" class="form-input" id="taskTitle" placeholder="Enter task title">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea class="form-textarea" id="taskDescription" placeholder="Enter description (optional)"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Date & Time</label>
-                <div class="datetime-group">
-                    <input type="date" class="form-input" id="taskDate">
-                    <input type="time" class="form-input" id="taskTime">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Subtasks</label>
-                <div class="subtask-list" id="subtaskContainer">
-                    <input type="text" class="subtask-input" placeholder="Enter subtask and press Enter" 
-                           onkeypress="handleSubtaskInput(event, this)">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Tags</label>
-                <input type="text" class="form-input" id="taskTags" placeholder="Enter tags separated by commas">
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Priority</label>
-                <div class="priority-buttons">
-                    <button class="btn-option" onclick="selectPriority('low', this)">Low</button>
-                    <button class="btn-option" onclick="selectPriority('medium', this)">Medium</button>
-                    <button class="btn-option" onclick="selectPriority('high', this)">High</button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="recurringEnabled" onchange="toggleRecurring()">
-                    <label for="recurringEnabled">Recurring Task</label>
-                </div>
-                <div class="recurring-options" id="recurringOptions">
-                    <div class="recurring-buttons">
-                        <button class="btn-option" onclick="selectRecurring('minutes', this)">Minutes</button>
-                        <button class="btn-option" onclick="selectRecurring('hours', this)">Hours</button>
-                        <button class="btn-option" onclick="selectRecurring('daily', this)">Daily</button>
-                        <button class="btn-option" onclick="selectRecurring('weekly', this)">Weekly</button>
-                        <button class="btn-option" onclick="selectRecurring('monthly', this)">Monthly</button>
-                        <button class="btn-option" onclick="selectRecurring('custom', this)">Custom</button>
-                    </div>
-                    <div id="timePresets"></div>
-                    <div id="daysSelector"></div>
-                    <div id="customRecurring"></div>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button class="btn btn-cancel" onclick="closeTaskModal()">Cancel</button>
-                <button class="btn btn-save" onclick="saveTask()">Save Task</button>
-            </div>
         </div>
     </div>
 
@@ -1067,7 +990,7 @@
                             ${timeRemaining.text}
                         </span>` : ''}
                         ${task.priority ? `<span class="pill priority-${task.priority}">${task.priority.toUpperCase()}</span>` : ''}
-                        ${task.recurring ? '<span class="pill recurring">🔄 Recurring</span>' : ''}
+                        ${task.recurring ? `<span class="pill recurring">🔄 Recurring</span>` : ''}
                         ${task.tags ? task.tags.split(',').map(tag => `<span class="pill">#${tag.trim()}</span>`).join('') : ''}
                     </div>
                     
@@ -1129,10 +1052,12 @@
             }
         }
 
-        // --- NEW SMART ADD TASK SHEET LOGIC ---
+        // --- UNIFIED SMART ADD/EDIT TASK SHEET LOGIC ---
 
-        function openSmartAddTaskSheet() {
+        function openSmartAddTaskSheet(taskToEdit = null) {
+            editingTaskId = taskToEdit ? taskToEdit.id : null;
             const contentEl = document.getElementById('bottomSheetContent');
+            
             contentEl.innerHTML = `
                 <div class="smart-add-container">
                     <div class="smart-add-input-area">
@@ -1197,12 +1122,72 @@
                     </div>
                 </div>
             `;
+
+            if (taskToEdit) {
+                populateSmartSheet(taskToEdit);
+            }
+
             document.getElementById('bottomSheetOverlay').classList.add('active');
             document.getElementById('mainBottomSheet').classList.add('active');
             
             setTimeout(() => {
                 document.getElementById('smartTaskTitle').focus();
             }, 100);
+        }
+
+        function populateSmartSheet(task) {
+            // Populate text fields
+            document.getElementById('smartTaskTitle').value = task.title || '';
+            document.getElementById('smartTaskDescription').value = task.description || '';
+            document.getElementById('smartTaskDate').value = task.date || '';
+            document.getElementById('smartTaskTime').value = task.time || '';
+            document.getElementById('smartTaskTags').value = task.tags || '';
+
+            // Populate priority
+            selectedPriority = task.priority || 'low';
+            document.querySelectorAll('#smart-priority-options .btn-option').forEach(btn => {
+                if (btn.textContent.toLowerCase() === selectedPriority) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Populate subtasks
+            const subtaskContainer = document.getElementById('smartSubtaskContainer');
+            if (task.subtasks && task.subtasks.length > 0) {
+                task.subtasks.forEach(subtask => {
+                    const subtaskDiv = document.createElement('div');
+                    subtaskDiv.className = 'subtask-item';
+                    subtaskDiv.innerHTML = `<span>${subtask.text}</span> <button class="action-btn btn-delete" style="width:24px; height:24px; font-size:12px;" onclick="this.parentElement.remove()">×</button>`;
+                    subtaskContainer.insertBefore(subtaskDiv, subtaskContainer.lastElementChild);
+                });
+            }
+
+            // Populate recurring
+            if (task.recurring) {
+                document.getElementById('smartRecurringEnabled').checked = true;
+                document.getElementById('smartRecurringDetails').classList.add('active');
+                selectedRecurring = task.recurring.type;
+                if (selectedRecurring) {
+                    document.querySelectorAll('#smartRecurringDetails .recurring-buttons .btn-option').forEach(btn => {
+                        if (btn.textContent.toLowerCase() === selectedRecurring) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    showSmartRecurringPresets(selectedRecurring); // To show days, presets etc.
+                }
+            }
+
+            // Show relevant sections
+            if (task.date || task.time) toggleSmartOptions('date');
+            if (task.priority) toggleSmartOptions('priority');
+            if (task.tags) toggleSmartOptions('tags');
+            if (task.subtasks && task.subtasks.length > 0) toggleSmartOptions('subtasks');
+            if (task.recurring) toggleSmartOptions('recurring');
+
+            // Final UI adjustments
+            autoGrow(document.getElementById('smartTaskTitle'));
+            autoGrow(document.getElementById('smartTaskDescription'));
+            toggleSaveButtonState();
         }
 
         function autoGrow(element) {
@@ -1306,8 +1291,7 @@
 
             const isRecurring = document.getElementById('smartRecurringEnabled').checked;
 
-            const newTask = {
-                id: generateId(),
+            const taskData = {
                 title: title,
                 description: document.getElementById('smartTaskDescription').value.trim(),
                 date: document.getElementById('smartTaskDate').value,
@@ -1322,11 +1306,23 @@
                     customInterval: document.getElementById('smartCustomInterval')?.value,
                     customUnit: document.getElementById('smartCustomUnit')?.value
                 } : null,
-                completed: false,
-                createdAt: new Date().toISOString()
             };
 
-            tasks.unshift(newTask);
+            if (editingTaskId) {
+                const taskIndex = tasks.findIndex(t => t.id === editingTaskId);
+                if (taskIndex > -1) {
+                    tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
+                }
+            } else {
+                const newTask = {
+                    id: generateId(),
+                    ...taskData,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+                tasks.unshift(newTask);
+            }
+
             saveToStorage();
             renderTasks();
             closeBottomSheet();
@@ -1345,180 +1341,17 @@
         function closeBottomSheet() {
             document.getElementById('bottomSheetOverlay').classList.remove('active');
             document.getElementById('mainBottomSheet').classList.remove('active');
-            selectedPriority = 'low'; // Reset for next time
-            selectedRecurring = null;
-        }
-
-        // --- END OF SMART ADD TASK SHEET LOGIC ---
-
-        function openTaskModal() {
-            document.getElementById('modalTitle').textContent = 'Add New Task';
             editingTaskId = null;
-            resetForm();
-            document.getElementById('taskModal').classList.add('active');
-        }
-
-        function closeTaskModal() {
-            document.getElementById('taskModal').classList.remove('active');
-        }
-
-        function resetForm() {
-            document.getElementById('taskTitle').value = '';
-            document.getElementById('taskDescription').value = '';
-            document.getElementById('taskDate').value = '';
-            document.getElementById('taskTime').value = '';
-            document.getElementById('taskTags').value = '';
-            document.getElementById('recurringEnabled').checked = false;
             selectedPriority = 'low';
             selectedRecurring = null;
-            
-            const subtaskContainer = document.getElementById('subtaskContainer');
-            subtaskContainer.innerHTML = '<input type="text" class="subtask-input" placeholder="Enter subtask and press Enter" onkeypress="handleSubtaskInput(event, this)">';
-            
-            document.querySelectorAll('.btn-option').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('.priority-buttons .btn-option').classList.add('active');
-            document.getElementById('recurringOptions').classList.remove('active');
-        }
-
-        function handleSubtaskInput(event, input) {
-            if (event.key === 'Enter' && input.value.trim() !== '') {
-                event.preventDefault();
-                const value = input.value.trim();
-                const subtaskDiv = document.createElement('div');
-                subtaskDiv.className = 'subtask-item';
-                subtaskDiv.innerHTML = `<span>${value}</span> <button onclick="removeSubtask(this)">×</button>`;
-                input.parentNode.insertBefore(subtaskDiv, input);
-                input.value = '';
-            }
-        }
-
-        function removeSubtask(button) {
-            button.parentNode.remove();
-        }
-
-        function selectPriority(priority, button) {
-            selectedPriority = priority;
-            document.querySelectorAll('.priority-buttons .btn-option').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-        }
-
-        function toggleRecurring() {
-            document.getElementById('recurringOptions').classList.toggle('active', document.getElementById('recurringEnabled').checked);
-        }
-
-        function selectRecurring(type, button) {
-            selectedRecurring = type;
-            document.querySelectorAll('#recurringOptions .recurring-buttons .btn-option').forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            showRecurringPresets(type);
-        }
-
-        function showRecurringPresets(type) {
-            const presetsContainer = document.getElementById('timePresets');
-            const daysContainer = document.getElementById('daysSelector');
-            const customContainer = document.getElementById('customRecurring');
-            
-            presetsContainer.innerHTML = '';
-            daysContainer.innerHTML = '';
-            customContainer.innerHTML = '';
-            
-            if (type === 'minutes') {
-                presetsContainer.innerHTML = `
-                    <div class="time-presets">
-                        <button class="btn-option" onclick="selectPreset(this)">1m</button> <button class="btn-option" onclick="selectPreset(this)">5m</button> <button class="btn-option" onclick="selectPreset(this)">15m</button> <button class="btn-option" onclick="selectPreset(this)">30m</button>
-                    </div>`;
-            } else if (type === 'hours') {
-                presetsContainer.innerHTML = `
-                    <div class="time-presets">
-                        <button class="btn-option" onclick="selectPreset(this)">1h</button> <button class="btn-option" onclick="selectPreset(this)">3h</button> <button class="btn-option" onclick="selectPreset(this)">6h</button> <button class="btn-option" onclick="selectPreset(this)">12h</button>
-                    </div>`;
-            } else if (type === 'weekly') {
-                daysContainer.innerHTML = `
-                    <div class="days-selector">
-                        <button class="day-btn" onclick="toggleDay(this)" data-day="1">M</button> <button class="day-btn" onclick="toggleDay(this)" data-day="2">T</button> <button class="day-btn" onclick="toggleDay(this)" data-day="3">W</button> <button class="day-btn" onclick="toggleDay(this)" data-day="4">TH</button> <button class="day-btn" onclick="toggleDay(this)" data-day="5">F</button> <button class="day-btn" onclick="toggleDay(this)" data-day="6">S</button> <button class="day-btn" onclick="toggleDay(this)" data-day="0">SU</button>
-                    </div>`;
-            } else if (type === 'custom') {
-                customContainer.innerHTML = `
-                    <input type="number" placeholder="Every X" class="form-input" id="customInterval" style="margin-top: 8px;">
-                    <select class="form-input" id="customUnit" style="margin-top: 8px;">
-                        <option value="minutes">Minutes</option> <option value="hours">Hours</option> <option value="days">Days</option> <option value="weeks">Weeks</option> <option value="months">Months</option>
-                    </select>`;
-            }
-        }
-
-        function saveTask() {
-            const title = document.getElementById('taskTitle').value.trim();
-            if (!title) { alert('Please enter a task title'); return; }
-            
-            const subtaskElements = document.querySelectorAll('#subtaskContainer .subtask-item span');
-            const subtasks = Array.from(subtaskElements).map(span => ({ text: span.textContent, completed: false }));
-            
-            const taskData = {
-                title: title,
-                description: document.getElementById('taskDescription').value.trim(),
-                date: document.getElementById('taskDate').value,
-                time: document.getElementById('taskTime').value,
-                subtasks: subtasks,
-                tags: document.getElementById('taskTags').value.trim(),
-                priority: selectedPriority,
-                recurring: document.getElementById('recurringEnabled').checked ? {
-                    type: selectedRecurring,
-                    preset: getSelectedPreset('#timePresets'),
-                    days: getSelectedDays('#daysSelector'),
-                    customInterval: document.getElementById('customInterval')?.value,
-                    customUnit: document.getElementById('customUnit')?.value
-                } : null
-            };
-            
-            if (editingTaskId) {
-                const taskIndex = tasks.findIndex(t => t.id === editingTaskId);
-                if (taskIndex !== -1) tasks[taskIndex] = { ...tasks[taskIndex], ...taskData };
-            } else {
-                tasks.unshift({ id: generateId(), ...taskData, completed: false, createdAt: new Date().toISOString() });
-            }
-            
-            saveToStorage();
-            renderTasks();
-            closeTaskModal();
         }
 
         function editTask(taskId, event) {
             if (event.target.closest('.task-checkbox, .task-actions, .subtask-toggle, .highlighted-url')) return;
-            
             const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            editingTaskId = taskId;
-            openTaskModal();
-            document.getElementById('modalTitle').textContent = 'Edit Task';
-            
-            document.getElementById('taskTitle').value = task.title;
-            document.getElementById('taskDescription').value = task.description || '';
-            document.getElementById('taskDate').value = task.date || '';
-            document.getElementById('taskTime').value = task.time || '';
-            document.getElementById('taskTags').value = task.tags || '';
-            
-            selectedPriority = task.priority || 'low';
-            document.querySelectorAll('.priority-buttons .btn-option').forEach(btn => {
-                btn.classList.toggle('active', btn.textContent.toLowerCase() === selectedPriority);
-            });
-            
-            if (task.recurring) {
-                document.getElementById('recurringEnabled').checked = true;
-                toggleRecurring();
+            if (task) {
+                openSmartAddTaskSheet(task);
             }
-            
-            const subtaskContainer = document.getElementById('subtaskContainer');
-            subtaskContainer.innerHTML = '';
-            if (task.subtasks) {
-                task.subtasks.forEach(subtask => {
-                    const subtaskDiv = document.createElement('div');
-                    subtaskDiv.className = 'subtask-item';
-                    subtaskDiv.innerHTML = `<span>${subtask.text}</span> <button onclick="removeSubtask(this)">×</button>`;
-                    subtaskContainer.appendChild(subtaskDiv);
-                });
-            }
-            subtaskContainer.innerHTML += '<input type="text" class="subtask-input" placeholder="Enter subtask and press Enter" onkeypress="handleSubtaskInput(event, this)">';
         }
 
         function toggleTask(taskId, event) {
