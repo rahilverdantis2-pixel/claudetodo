@@ -735,8 +735,8 @@
         .settings-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px 24px;
-            margin-bottom: 16px;
+            gap: 24px;
+            margin-bottom: 24px;
         }
         .settings-grid .form-group, .settings-grid .checkbox-group {
             margin-bottom: 0;
@@ -751,6 +751,21 @@
         }
         .settings-grid .full-width {
             grid-column: 1 / -1;
+        }
+        #customSoundName {
+            font-size: 12px;
+            color: #666;
+            margin-left: 8px;
+        }
+        #clearCustomSoundBtn {
+            margin-left: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #ffebee;
+            color: #d32f2f;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -815,7 +830,8 @@
         let selectedPriority = 'low';
         let selectedRecurring = null;
         let currentFilter = 'all';
-        let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50}');
+        let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null}');
+        let customSoundURL = notificationSettings.customSoundDataURL;
 
         function saveToStorage() {
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
@@ -1454,7 +1470,12 @@
                     </div>
                     <div class="form-group">
                         <label for="customSound" class="form-label">Custom Sound</label>
-                        <input type="file" id="customSound" onchange="handleCustomSound(event)">
+                        <div>
+                            <input type="file" id="customSound" onchange="handleCustomSound(event)" style="display: none;">
+                            <button class="btn-option" onclick="document.getElementById('customSound').click()">Choose File</button>
+                            <span id="customSoundName"></span>
+                            <button id="clearCustomSoundBtn" style="display:none;" onclick="clearCustomSound()">Clear</button>
+                        </div>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label">Notification Duration</label>
@@ -1481,7 +1502,7 @@
 
             updateSliderFill(durationSlider);
             updateSliderFill(volumeSlider);
-
+            updateCustomSoundUI();
             openBottomSheet();
         }
 
@@ -1489,6 +1510,7 @@
             notificationSettings.enabled = document.getElementById('notificationsEnabled').checked;
             notificationSettings.duration = parseInt(document.getElementById('notificationDuration').value);
             notificationSettings.volume = parseInt(document.getElementById('volumeSlider').value);
+            notificationSettings.customSoundDataURL = customSoundURL;
             saveNotificationSettings();
             closeBottomSheet();
         }
@@ -1524,7 +1546,6 @@
             slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
         }
 
-        // --- FULLY RESTORED NOTIFICATION LOGIC ---
         function testNotification() {
             playNotificationSound();
             if (!('Notification' in window)) {
@@ -1555,6 +1576,16 @@
         }
 
         function playNotificationSound() {
+            const volumeSlider = document.getElementById('volumeSlider');
+            const liveVolume = volumeSlider ? volumeSlider.value / 100 : notificationSettings.volume / 100;
+
+            if (customSoundURL) {
+                const audio = new Audio(customSoundURL);
+                audio.volume = liveVolume;
+                audio.play().catch(e => console.error("Error playing custom sound:", e));
+                return;
+            }
+
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
@@ -1566,8 +1597,7 @@
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
                 
-                const volume = notificationSettings.volume / 100;
-                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(liveVolume, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1);
                 
                 oscillator.start(audioContext.currentTime);
@@ -1578,7 +1608,36 @@
             }
         }
 
-        function handleCustomSound(event) { if (event.target.files[0]) alert('Custom sound uploaded!'); }
+        function handleCustomSound(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                customSoundURL = e.target.result;
+                updateCustomSoundUI(file.name);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearCustomSound() {
+            customSoundURL = null;
+            document.getElementById('customSound').value = '';
+            updateCustomSoundUI();
+        }
+
+        function updateCustomSoundUI(fileName = '') {
+            const nameEl = document.getElementById('customSoundName');
+            const clearBtn = document.getElementById('clearCustomSoundBtn');
+            if (fileName) {
+                nameEl.textContent = fileName.length > 15 ? fileName.substring(0, 12) + '...' : fileName;
+                clearBtn.style.display = 'inline-block';
+            } else {
+                nameEl.textContent = '';
+                clearBtn.style.display = 'none';
+            }
+        }
+
         function updateDurationDisplay() {
             const slider = document.getElementById('notificationDuration');
             document.getElementById('durationDisplay').textContent = `${slider.value} seconds`;
