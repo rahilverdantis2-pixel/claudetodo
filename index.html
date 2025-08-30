@@ -1725,6 +1725,107 @@
                 : '<p style="text-align: center; color: #999; padding: 20px;">No tasks found</p>';
         }
 
+        // New function to trigger notification for a due task
+        function triggerNotification(task) {
+          if (!notificationSettings.enabled) return;
+
+          // Play initial sound
+          playNotificationSound();
+
+          // Browser notification
+          if ('Notification' in window) {
+            if (Notification.permission === 'granted') {
+              const notif = new Notification('Task Due!', {
+                body: task.title + (task.description ? `\n${task.description}` : ''),
+                tag: task.id
+              });
+              // Close after duration (in ms)
+              setTimeout(() => notif.close(), notificationSettings.duration * 1000);
+            } else if (Notification.permission !== 'denied') {
+              Notification.requestPermission().then(permission => {
+                if (permission === 'granted') triggerNotification(task);  // Retry
+              });
+            }
+          }
+
+          // Handle repeats
+          if (notificationSettings.repeatEnabled) {
+            let repeatCounter = 1;  // Already played once
+            const repeatInterval = setInterval(() => {
+              if (repeatCounter >= notificationSettings.repeatCount) {
+                clearInterval(repeatInterval);
+                return;
+              }
+              playNotificationSound();
+              repeatCounter++;
+            }, 2000);  // Delay between repeats
+
+            // If stopWithButton is enabled, show a simple dismiss button (appends to body)
+            if (notificationSettings.stopWithButton) {
+              const dismissBtn = document.createElement('button');
+              dismissBtn.textContent = 'Stop Notification';
+              dismissBtn.style.position = 'fixed';
+              dismissBtn.style.bottom = '100px';
+              dismissBtn.style.left = '50%';
+              dismissBtn.style.transform = 'translateX(-50%)';
+              dismissBtn.style.padding = '10px 20px';
+              dismissBtn.style.background = '#d32f2f';
+              dismissBtn.style.color = 'white';
+              dismissBtn.style.border = 'none';
+              dismissBtn.style.borderRadius = '8px';
+              dismissBtn.style.cursor = 'pointer';
+              dismissBtn.style.zIndex = '2000';
+              dismissBtn.onclick = () => {
+                clearInterval(repeatInterval);
+                dismissBtn.remove();
+              };
+              document.body.appendChild(dismissBtn);
+
+              // Auto-remove after duration
+              setTimeout(() => dismissBtn.remove(), notificationSettings.duration * 1000);
+            }
+          }
+        }
+
+        // New function to check due tasks
+        function checkDueTasks() {
+          const now = new Date();
+          let needsRerender = false;
+
+          tasks.forEach(task => {
+            if (task.date && task.time && !task.completed && !task.notified) {
+              const due = new Date(`${task.date}T${task.time}`);
+              if (due <= now) {
+                triggerNotification(task);
+                task.notified = true;
+                needsRerender = true;
+              }
+            }
+          });
+
+          if (needsRerender) {
+            saveToStorage();
+            renderTasks();  // Update UI after notification
+          }
+        }
+
+        // Live update timers in UI every 10 seconds (optional but improves UX)
+        setInterval(() => {
+          tasks.forEach(task => {
+            const timerEl = document.getElementById(`timer-${task.id}`);
+            if (timerEl && task.date && task.time) {
+              const timeInfo = getTimeRemaining(task.date, task.time);
+              timerEl.innerHTML = `${task.time ? '<span class="alarm-icon">⏰</span>' : ''} ${timeInfo.text}`;
+              timerEl.className = `pill ${timeInfo.isOverdue ? 'overdue' : 'time-remaining'}`;
+            }
+          });
+        }, 10000);
+
+        // Main checker: Run every 30 seconds
+        setInterval(checkDueTasks, 30000);
+        // Initial check on load
+        checkDueTasks();
+
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
         });
