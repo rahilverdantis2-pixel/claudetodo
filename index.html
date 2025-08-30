@@ -428,33 +428,6 @@
             border-color: #2196F3;
         }
 
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: #fff;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 24px;
-        }
-
         .form-group {
             margin-bottom: 16px;
         }
@@ -712,10 +685,6 @@
             margin-bottom: 16px;
         }
 
-        .search-modal {
-            padding-top: 60px;
-        }
-
         /* URL styling */
         .highlighted-url {
             background: #e3f2fd;
@@ -811,7 +780,7 @@
     </div>
 
     <div class="bottom-nav">
-        <div class="search-icon" onclick="openSearch()">
+        <div class="search-icon" onclick="openSearchSheet()">
             🔍
         </div>
         <div class="quick-add-container">
@@ -829,18 +798,6 @@
         <div class="bottom-sheet-handle"></div>
         <div class="bottom-sheet-content" id="bottomSheetContent">
             <!-- Content is injected here by JavaScript -->
-        </div>
-    </div>
-
-    <!-- Search Modal (The only remaining modal) -->
-    <div class="modal" id="searchModal">
-        <div class="modal-content search-modal">
-            <input type="text" class="search-bar" placeholder="Search tasks..." 
-                   id="searchInput" onkeyup="performSearch()">
-            <div id="searchResults"></div>
-            <div class="modal-actions">
-                <button class="btn btn-cancel" onclick="closeSearch()">Close</button>
-            </div>
         </div>
     </div>
 
@@ -1727,7 +1684,20 @@
         }
 
         function applyFilter(filter) { currentFilter = filter; renderTasks(); closeBottomSheet(); }
-        function openSearch() { document.getElementById('searchModal').classList.add('active'); document.getElementById('searchInput').focus(); }
+        function openSearchSheet() {
+            const contentEl = document.getElementById('bottomSheetContent');
+            contentEl.innerHTML = `
+                <div class="sheet-title">Search Tasks</div>
+                <input type="text" class="form-input" placeholder="Search tasks..." 
+                       id="searchInput" onkeyup="performSearch()">
+                <div id="searchResults" style="margin-top: 16px;"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-cancel" onclick="closeBottomSheet()">Close</button>
+                </div>
+            `;
+            openBottomSheet();
+            setTimeout(() => document.getElementById('searchInput').focus(), 100);
+        }
         function closeSearch() { document.getElementById('searchModal').classList.remove('active'); }
 
         function performSearch() {
