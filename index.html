@@ -648,7 +648,6 @@
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            margin: 8px 0;
         }
 
         .filter-options, .snooze-grid {
@@ -730,6 +729,21 @@
         .highlighted-url:hover {
             background: #bbdefb;
             color: #0d47a1;
+        }
+
+        /* NEW Settings Sheet Layout Styles */
+        .settings-row-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            gap: 16px;
+        }
+        .settings-row-sliders {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
         }
     </style>
 </head>
@@ -1426,28 +1440,28 @@
             const contentEl = document.getElementById('bottomSheetContent');
             contentEl.innerHTML = `
                 <div class="sheet-title">Notification Settings</div>
-                <div class="form-group">
-                    <div class="checkbox-group">
+                <div class="settings-row-actions">
+                    <div class="checkbox-group" style="margin-bottom: 0;">
                         <input type="checkbox" id="notificationsEnabled" ${notificationSettings.enabled ? 'checked' : ''}>
                         <label for="notificationsEnabled">Enable Notifications</label>
                     </div>
+                    <div>
+                        <label class="form-label" style="font-size: 14px; text-align: center;">Custom Sound</label>
+                        <input type="file" accept="audio/*" id="customSound" onchange="handleCustomSound(event)">
+                    </div>
+                    <button class="notification-test" onclick="testNotification()">🔊 Test</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Notification Duration</label>
-                    <input type="range" class="custom-slider" id="notificationDuration" min="5" max="60" value="${notificationSettings.duration}">
-                    <span id="durationDisplay">${notificationSettings.duration} seconds</span>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Volume</label>
-                    <input type="range" class="custom-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
-                    <span id="volumeDisplay">${notificationSettings.volume}%</span>
-                </div>
-                <div class="form-group">
-                    <button class="notification-test" onclick="testNotification()">🔊 Test Notification Sound</button>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Custom Sound</label>
-                    <input type="file" accept="audio/*" id="customSound" onchange="handleCustomSound(event)">
+                <div class="settings-row-sliders">
+                    <div class="form-group">
+                        <label class="form-label">Notification Duration</label>
+                        <input type="range" class="custom-slider" id="notificationDuration" min="5" max="60" value="${notificationSettings.duration}">
+                        <span id="durationDisplay">${notificationSettings.duration} seconds</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Volume</label>
+                        <input type="range" class="custom-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
+                        <span id="volumeDisplay">${notificationSettings.volume}%</span>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button class="btn btn-save" style="width: 100%;" onclick="saveAndCloseSettings()">Done</button>
