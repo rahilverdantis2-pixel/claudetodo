@@ -1467,11 +1467,9 @@
                         <span id="volumeDisplay">${notificationSettings.volume}%</span>
                     </div>
                 </div>
-                <div class="form-group">
-                    <button class="notification-test" style="width: 100%;" onclick="testNotification()">🔊 Test Notification Sound</button>
-                </div>
                 <div class="modal-actions">
-                    <button class="btn btn-save" style="width: 100%;" onclick="saveAndCloseSettings()">Done</button>
+                    <button class="btn notification-test" style="flex: 1; background: #e8f5e8; color: #388e3c;" onclick="testNotification()">🔊 Test Sound</button>
+                    <button class="btn btn-save" style="flex: 1;" onclick="saveAndCloseSettings()">Done</button>
                 </div>
             `;
             
@@ -1526,7 +1524,60 @@
             slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
         }
 
-        function testNotification() { alert('Testing notifications...'); }
+        // --- FULLY RESTORED NOTIFICATION LOGIC ---
+        function testNotification() {
+            playNotificationSound();
+            if (!('Notification' in window)) {
+                alert('This browser does not support notifications. However, the sound was played.');
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                showTestNotification();
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(function(permission) {
+                    if (permission === 'granted') {
+                        showTestNotification();
+                    }
+                });
+            }
+        }
+        
+        function showTestNotification() {
+            try {
+                const notification = new Notification('Todo App - Test Notification', {
+                    body: 'This is how your task notifications will look!',
+                    tag: 'todo-test'
+                });
+                setTimeout(() => notification.close(), 3000);
+            } catch (error) {
+                console.error("Notification Error:", error);
+            }
+        }
+
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                
+                const volume = notificationSettings.volume / 100;
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 1);
+            } catch (error) {
+                console.error("Audio Context Error:", error);
+                alert('Sound playback not supported in this browser.');
+            }
+        }
+
         function handleCustomSound(event) { if (event.target.files[0]) alert('Custom sound uploaded!'); }
         function updateDurationDisplay() {
             const slider = document.getElementById('notificationDuration');
