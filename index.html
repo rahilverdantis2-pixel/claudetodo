@@ -844,18 +844,18 @@
             const now = new Date();
             const diff = target - now;
             
-            if (diff < 0) return { text: 'Overdue', isOverdue: true };
+            if (diff < 0) return { text: 'Overdue', isOverdue: true, diff };
             
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
             const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
             
-            if (days > 0) return { text: `in ${days}d ${hours}h`, isOverdue: false };
-            if (hours > 0) return { text: `in ${hours}h ${minutes}m`, isOverdue: false };
-            if (minutes > 0) return { text: `in ${minutes}m ${seconds}s`, isOverdue: false };
-            if (seconds > 0) return { text: `in ${seconds}s`, isOverdue: false };
-            return { text: 'Due now', isOverdue: false };
+            if (days > 0) return { text: `in ${days}d ${hours}h`, isOverdue: false, diff };
+            if (hours > 0) return { text: `in ${hours}h ${minutes}m`, isOverdue: false, diff };
+            if (minutes > 0) return { text: `in ${minutes}m ${seconds}s`, isOverdue: false, diff };
+            if (seconds >= 0) return { text: `in ${seconds}s`, isOverdue: false, diff };
+            return { text: 'Due now', isOverdue: false, diff };
         }
 
         function highlightURLs(text) {
@@ -932,7 +932,7 @@
         }
 
         function renderTaskCard(task, isSearchResult = false) {
-            const timeRemaining = task.date && task.time ? getTimeRemaining(task.date, task.time) : null;
+            const timeInfo = (task.date && task.time) ? getTimeRemaining(task.date, task.time) : null;
             const hasTimer = task.date && task.time;
 
             let progressBarHTML = '';
@@ -973,9 +973,9 @@
                     
                     <div class="task-meta">
                         ${task.date ? `<span class="pill">${formatDateTime(task.date, task.time)}</span>` : ''}
-                        ${timeRemaining ? `<span class="pill ${timeRemaining.isOverdue ? 'overdue' : 'time-remaining'}">
+                        ${timeInfo ? `<span id="timer-${task.id}" class="pill ${timeInfo.isOverdue ? 'overdue' : 'time-remaining'}">
                             ${hasTimer ? '<span class="alarm-icon">⏰</span>' : ''}
-                            ${timeRemaining.text}
+                            ${timeInfo.text}
                         </span>` : ''}
                         ${task.priority ? `<span class="pill priority-${task.priority}">${task.priority.toUpperCase()}</span>` : ''}
                         ${task.recurring ? `<span class="pill recurring">🔄 Recurring</span>` : ''}
