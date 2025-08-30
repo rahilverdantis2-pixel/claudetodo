@@ -606,9 +606,39 @@
             color: white;
         }
 
-        .volume-slider {
+        /* NEW Custom Range Slider Styles */
+        .custom-slider {
+            -webkit-appearance: none;
+            appearance: none;
             width: 100%;
-            margin: 12px 0;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            outline: none;
+            margin: 10px 0;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #2196F3;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,0.2);
+            margin-top: -7px;
+        }
+
+        .custom-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #2196F3;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,0.2);
         }
 
         .notification-test {
@@ -1026,11 +1056,7 @@
                         </div>
                     </div>
                     <div id="smart-recurring-options" class="smart-add-options">
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="smartRecurringEnabled" onchange="syncRecurringUI()">
-                            <label for="smartRecurringEnabled">Enable Recurring Task</label>
-                        </div>
-                        <div class="recurring-options" id="smartRecurringDetails">
+                        <div class="recurring-options active" id="smartRecurringDetails">
                             <div class="recurring-buttons" style="grid-template-columns: repeat(3, 1fr);">
                                 <button class="btn-option" onclick="selectSmartRecurring('minutes', this)">Minutes</button>
                                 <button class="btn-option" onclick="selectSmartRecurring('hours', this)">Hours</button>
@@ -1094,7 +1120,6 @@
             }
 
             if (task.recurring) {
-                document.getElementById('smartRecurringEnabled').checked = true;
                 selectedRecurring = task.recurring.type;
                 if (selectedRecurring) {
                     document.querySelectorAll('#smartRecurringDetails .recurring-buttons .btn-option').forEach(btn => {
@@ -1105,7 +1130,7 @@
                     showSmartRecurringPresets(selectedRecurring);
                 }
             }
-            syncRecurringUI();
+            syncRecurringUI(task.recurring);
 
             if (task.date || task.time) toggleSmartOptions('date', true);
             if (task.priority) toggleSmartOptions('priority', true);
@@ -1137,32 +1162,29 @@
                 button.classList.add('active');
             } else {
                 const shouldBeActive = !container.classList.contains('active');
-                // Deactivate all others
                 ['date', 'priority', 'tags', 'subtasks', 'recurring'].forEach(opt => {
                     if (opt !== optionType) {
                         document.getElementById(`smart-${opt}-options`).classList.remove('active');
                         document.getElementById(`${opt}-btn`).classList.remove('active');
                     }
                 });
-                // Toggle the selected one
                 container.classList.toggle('active', shouldBeActive);
                 button.classList.toggle('active', shouldBeActive);
             }
         }
 
         function toggleRecurringDirectly() {
-            const checkbox = document.getElementById('smartRecurringEnabled');
-            checkbox.checked = !checkbox.checked;
-            syncRecurringUI();
-            toggleSmartOptions('recurring', checkbox.checked);
+            const button = document.getElementById('recurring-btn');
+            const isActive = button.classList.toggle('active');
+            document.getElementById('smart-recurring-options').classList.toggle('active', isActive);
+            if (isActive) {
+                toggleSmartOptions('recurring', true);
+            }
         }
 
-        function syncRecurringUI() {
-            const checkbox = document.getElementById('smartRecurringEnabled');
-            const details = document.getElementById('smartRecurringDetails');
+        function syncRecurringUI(isRecurring) {
             const button = document.getElementById('recurring-btn');
-            details.classList.toggle('active', checkbox.checked);
-            button.classList.toggle('active', checkbox.checked);
+            button.classList.toggle('active', !!isRecurring);
         }
 
         function selectSmartPriority(priority, button) {
@@ -1226,7 +1248,7 @@
             const subtaskElements = document.querySelectorAll('#smartSubtaskContainer .subtask-item span');
             const subtasks = Array.from(subtaskElements).map(span => ({ text: span.textContent, completed: false }));
 
-            const isRecurring = document.getElementById('smartRecurringEnabled').checked;
+            const isRecurring = document.getElementById('recurring-btn').classList.contains('active');
 
             const taskData = {
                 title: title,
@@ -1412,12 +1434,12 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Notification Duration</label>
-                    <input type="range" class="volume-slider" id="notificationDuration" min="5" max="60" value="${notificationSettings.duration}">
+                    <input type="range" class="custom-slider" id="notificationDuration" min="5" max="60" value="${notificationSettings.duration}">
                     <span id="durationDisplay">${notificationSettings.duration} seconds</span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Volume</label>
-                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
+                    <input type="range" class="custom-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
                     <span id="volumeDisplay">${notificationSettings.volume}%</span>
                 </div>
                 <div class="form-group">
@@ -1428,11 +1450,19 @@
                     <input type="file" accept="audio/*" id="customSound" onchange="handleCustomSound(event)">
                 </div>
                 <div class="modal-actions">
-                    <button class="btn btn-save" onclick="saveAndCloseSettings()">Done</button>
+                    <button class="btn btn-save" style="width: 100%;" onclick="saveAndCloseSettings()">Done</button>
                 </div>
             `;
-            document.getElementById('notificationDuration').addEventListener('input', updateDurationDisplay);
-            document.getElementById('volumeSlider').addEventListener('input', updateVolumeDisplay);
+            
+            const durationSlider = document.getElementById('notificationDuration');
+            const volumeSlider = document.getElementById('volumeSlider');
+
+            durationSlider.addEventListener('input', updateDurationDisplay);
+            volumeSlider.addEventListener('input', updateVolumeDisplay);
+
+            updateSliderFill(durationSlider);
+            updateSliderFill(volumeSlider);
+
             openBottomSheet();
         }
 
@@ -1467,10 +1497,26 @@
             openBottomSheet();
         }
 
+        function updateSliderFill(slider) {
+            const min = slider.min || 0;
+            const max = slider.max || 100;
+            const value = slider.value;
+            const percentage = ((value - min) / (max - min)) * 100;
+            slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
+        }
+
         function testNotification() { alert('Testing notifications...'); }
         function handleCustomSound(event) { if (event.target.files[0]) alert('Custom sound uploaded!'); }
-        function updateDurationDisplay() { document.getElementById('durationDisplay').textContent = `${document.getElementById('notificationDuration').value} seconds`; }
-        function updateVolumeDisplay() { document.getElementById('volumeDisplay').textContent = `${document.getElementById('volumeSlider').value}%`; }
+        function updateDurationDisplay() {
+            const slider = document.getElementById('notificationDuration');
+            document.getElementById('durationDisplay').textContent = `${slider.value} seconds`;
+            updateSliderFill(slider);
+        }
+        function updateVolumeDisplay() {
+            const slider = document.getElementById('volumeSlider');
+            document.getElementById('volumeDisplay').textContent = `${slider.value}%`;
+            updateSliderFill(slider);
+        }
 
         function applyFilter(filter) { currentFilter = filter; renderTasks(); closeBottomSheet(); }
         function openSearch() { document.getElementById('searchModal').classList.add('active'); document.getElementById('searchInput').focus(); }
