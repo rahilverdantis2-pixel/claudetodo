@@ -1565,43 +1565,45 @@
 
         // --- FULLY RESTORED NOTIFICATION LOGIC ---
         function testNotification() {
+            // Play the first sound immediately
+            playNotificationSound();
+            showTestBrowserNotification();
+
+            // Set up repeats if enabled
             const repeatEnabled = document.getElementById('repeatEnabled').checked;
-            const repeatCount = repeatEnabled ? parseInt(document.getElementById('repeatCount').value) || 1 : 1;
-            
-            let count = 0;
+            if (!repeatEnabled) return;
+
+            const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
+            if (repeatCount <= 1) return;
+
+            let repeatCounter = 1; // We've already played it once
             const interval = setInterval(() => {
-                if (count >= repeatCount) {
+                if (repeatCounter >= repeatCount) {
                     clearInterval(interval);
                     return;
                 }
                 playNotificationSound();
-                count++;
-            }, 2000); // 2-second delay between test sounds
-
+                repeatCounter++;
+            }, 2000); // 2-second delay between subsequent sounds
+        }
+        
+        function showTestBrowserNotification() {
             if (!('Notification' in window)) {
-                alert('This browser does not support notifications. However, the sound was played.');
+                alert('This browser does not support notifications.');
                 return;
             }
             if (Notification.permission === 'granted') {
-                showTestNotification();
-            } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission().then(function(permission) {
-                    if (permission === 'granted') {
-                        showTestNotification();
-                    }
-                });
-            }
-        }
-        
-        function showTestNotification() {
-            try {
                 const notification = new Notification('Todo App - Test Notification', {
                     body: 'This is how your task notifications will look!',
                     tag: 'todo-test'
                 });
                 setTimeout(() => notification.close(), 3000);
-            } catch (error) {
-                console.error("Notification Error:", error);
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(function(permission) {
+                    if (permission === 'granted') {
+                        showTestBrowserNotification();
+                    }
+                });
             }
         }
 
