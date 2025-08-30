@@ -849,6 +849,29 @@
             border-radius: 50%; /* Restore circle for today if it has tasks */
             border-bottom: 2px solid transparent; /* Hide underscore to avoid clash */
         }
+
+        /* NEW Date Filter Navigation Styles */
+        .date-filter-nav {
+            display: none; /* Hidden by default */
+            position: fixed;
+            bottom: 90px; /* Above the main bottom nav */
+            left: 16px;
+            right: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            gap: 12px;
+            z-index: 99;
+            transform: translateY(200%);
+            transition: transform 0.3s ease-out;
+        }
+        .date-filter-nav.visible {
+            display: flex;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -856,7 +879,7 @@
         <div class="settings-icon" onclick="openSettingsSheet()">
             ⚙️
         </div>
-        <h1>Todo</h1>
+        <h1 id="main-header">Todo</h1>
         <div class="filter-icon" onclick="openFilterSheet()">
             🔽
         </div>
@@ -870,6 +893,10 @@
 
     <div id="calendarView" class="calendar-container" style="display: none;">
         <!-- Calendar is rendered here -->
+    </div>
+
+    <div id="dateFilterNav" class="date-filter-nav">
+        <!-- Buttons will be injected by JS -->
     </div>
 
 
@@ -1001,10 +1028,7 @@
                         <p>Add your first task using the quick add or plus button</p>
                     </div>
                 `;
-                return;
-            }
-
-            if (filteredTasks.length === 0) {
+            } else if (filteredTasks.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -1014,30 +1038,38 @@
                         <p>Try adjusting your filter or add a new task</p>
                     </div>
                 `;
-                return;
-            }
-            
-            let html = '';
-            
-            if (incompleteTasks.length > 0) {
-                html += incompleteTasks.map(task => renderTaskCard(task)).join('');
-            }
-            
-            if (completedTasks.length > 0) {
-                html += `
-                    <div class="completed-section">
-                        <div class="completed-header" onclick="toggleCompletedSection()">
-                            <span>Completed (${completedTasks.length})</span>
-                            <span class="completed-toggle" id="completedToggle">▼</span>
+            } else {
+                let html = '';
+                if (incompleteTasks.length > 0) {
+                    html += incompleteTasks.map(task => renderTaskCard(task)).join('');
+                }
+                if (completedTasks.length > 0) {
+                    html += `
+                        <div class="completed-section">
+                            <div class="completed-header" onclick="toggleCompletedSection()">
+                                <span>Completed (${completedTasks.length})</span>
+                                <span class="completed-toggle" id="completedToggle">▼</span>
+                            </div>
+                            <div class="completed-tasks" id="completedTasks">
+                                ${completedTasks.map(task => renderTaskCard(task)).join('')}
+                            </div>
                         </div>
-                        <div class="completed-tasks" id="completedTasks">
-                            ${completedTasks.map(task => renderTaskCard(task)).join('')}
-                        </div>
-                    </div>
+                    `;
+                }
+                container.innerHTML = html;
+            }
+
+            // Manage the date filter navigation buttons
+            const dateFilterNav = document.getElementById('dateFilterNav');
+            if (currentFilter === 'date') {
+                dateFilterNav.innerHTML = `
+                    <button class="btn btn-cancel" onclick="switchView('calendar')">📅 Back to Calendar</button>
+                    <button class="btn btn-save" onclick="applyFilter('all')">📝 Show All Tasks</button>
                 `;
+                dateFilterNav.classList.add('visible');
+            } else {
+                dateFilterNav.classList.remove('visible');
             }
-            
-            container.innerHTML = html;
         }
 
         function renderTaskCard(task, isSearchResult = false) {
@@ -1802,9 +1834,9 @@
 
         function applyFilter(filter) { 
             currentFilter = filter; 
-            document.querySelector('.header h1').textContent = 'Todo'; // Reset header
+            document.getElementById('main-header').textContent = 'Todo'; // Reset header
             renderTasks(); 
-            closeBottomSheet(); 
+            if(filter !== 'date') closeBottomSheet(); 
         }
         
         function openSearchSheet() {
@@ -1953,7 +1985,7 @@
                 calendarView.style.display = 'none';
                 todoToggle.classList.add('active');
                 calendarToggle.classList.remove('active');
-                renderTasks(); // Re-render tasks when switching to this view
+                renderTasks(); // Re-render tasks to show/hide date filter nav
             } else {
                 todoView.style.display = 'none';
                 calendarView.style.display = 'block';
@@ -2042,7 +2074,7 @@
             
             // Update header for user feedback
             const dateObj = new Date(dateString + 'T00:00:00'); // Avoid timezone issues
-            document.querySelector('.header h1').textContent = `Tasks for ${dateObj.toLocaleDateString()}`;
+            document.getElementById('main-header').textContent = `Tasks for ${dateObj.toLocaleDateString()}`;
 
             switchView('todo');
         }
