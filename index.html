@@ -815,6 +815,13 @@
             height: 36px;
             width: 36px;
             margin: 0 auto;
+            transition: background-color 0.2s;
+        }
+        .calendar-day.clickable-day {
+            cursor: pointer;
+        }
+        .calendar-day.clickable-day:hover {
+            background-color: #f5f5f5;
         }
         .day-name {
             font-weight: 600;
@@ -835,11 +842,9 @@
             color: #ccc;
         }
         .calendar-day.has-tasks {
-            cursor: pointer;
             border: 2px solid #bbdefb; /* Light blue ring */
             color: #1976d2;
             font-weight: bold;
-            transition: background-color 0.2s;
         }
         .calendar-day.has-tasks:hover {
             background-color: #e3f2fd;
@@ -1186,7 +1191,7 @@
         // --- UNIFIED SMART ADD/EDIT TASK SHEET LOGIC ---
 
         function openSmartAddTaskSheet(taskToEdit = null) {
-            editingTaskId = taskToEdit ? taskToEdit.id : null;
+            editingTaskId = taskToEdit && taskToEdit.id ? taskToEdit.id : null;
             const contentEl = document.getElementById('bottomSheetContent');
             
             contentEl.innerHTML = `
@@ -1991,6 +1996,7 @@
                 calendarView.style.display = 'block';
                 todoToggle.classList.remove('active');
                 calendarToggle.classList.add('active');
+                applyFilter('all'); // Reset any date filter when going to calendar
                 renderCalendar();
             }
         }
@@ -2033,13 +2039,12 @@
             // Days of the current month
             const today = new Date();
             for (let day = 1; day <= daysInMonth; day++) {
-                let classes = 'calendar-day';
+                let classes = 'calendar-day clickable-day';
                 const currentDay = new Date(year, month, day);
                 const dayOfWeek = currentDay.getDay();
                 
-                // Format date as YYYY-MM-DD for comparison
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                let clickHandler = '';
+                let clickHandler;
 
                 if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
                     classes += ' today';
@@ -2050,6 +2055,8 @@
                 if (datesWithTasks.has(dateString)) {
                     classes += ' has-tasks';
                     clickHandler = `onclick="showTasksForDate('${dateString}')"`;
+                } else {
+                    clickHandler = `onclick="addTaskForDate('${dateString}')"`;
                 }
                 html += `<div class="${classes}" ${clickHandler}>${day}</div>`;
             }
@@ -2072,11 +2079,15 @@
             currentFilter = 'date';
             selectedDateForFilter = dateString;
             
-            // Update header for user feedback
             const dateObj = new Date(dateString + 'T00:00:00'); // Avoid timezone issues
             document.getElementById('main-header').textContent = `Tasks for ${dateObj.toLocaleDateString()}`;
 
             switchView('todo');
+        }
+
+        function addTaskForDate(dateString) {
+            // Open the smart add sheet with the date pre-filled
+            openSmartAddTaskSheet({ date: dateString });
         }
 
 
