@@ -1787,47 +1787,52 @@
           }
         }
 
-        // New function to check due tasks
-        function checkDueTasks() {
-          const now = new Date();
-          let needsRerender = false;
+        // New combined function for real-time updates and notifications
+        function masterTick() {
+            const now = new Date();
+            let needsSave = false;
 
-          tasks.forEach(task => {
-            if (task.date && task.time && !task.completed && !task.notified) {
-              const due = new Date(`${task.date}T${task.time}`);
-              if (due <= now) {
-                triggerNotification(task);
-                task.notified = true;
-                needsRerender = true;
-              }
+            tasks.forEach(task => {
+                // --- Notification Logic ---
+                if (task.date && task.time && !task.completed && !task.notified) {
+                    const due = new Date(`${task.date}T${task.time}`);
+                    if (due <= now) {
+                        triggerNotification(task);
+                        task.notified = true;
+                        needsSave = true;
+                    }
+                }
+
+                // --- UI Timer Update Logic ---
+                const timerEl = document.getElementById(`timer-${task.id}`);
+                if (timerEl && task.date && task.time) {
+                    const timeInfo = getTimeRemaining(task.date, task.time);
+                    const newHTML = `${task.time ? '<span class="alarm-icon">⏰</span>' : ''} ${timeInfo.text}`;
+                    
+                    // Only update DOM if content has changed to be more efficient
+                    if (timerEl.innerHTML !== newHTML) {
+                        timerEl.innerHTML = newHTML;
+                    }
+                    
+                    const newClassName = `pill ${timeInfo.isOverdue ? 'overdue' : 'time-remaining'}`;
+                    if (timerEl.className !== newClassName) {
+                        timerEl.className = newClassName;
+                    }
+                }
+            });
+
+            if (needsSave) {
+                saveToStorage();
             }
-          });
-
-          if (needsRerender) {
-            saveToStorage();
-            renderTasks();  // Update UI after notification
-          }
         }
 
-        // Live update timers in UI every 10 seconds (optional but improves UX)
-        setInterval(() => {
-          tasks.forEach(task => {
-            const timerEl = document.getElementById(`timer-${task.id}`);
-            if (timerEl && task.date && task.time) {
-              const timeInfo = getTimeRemaining(task.date, task.time);
-              timerEl.innerHTML = `${task.time ? '<span class="alarm-icon">⏰</span>' : ''} ${timeInfo.text}`;
-              timerEl.className = `pill ${timeInfo.isOverdue ? 'overdue' : 'time-remaining'}`;
-            }
-          });
-        }, 10000);
-
-        // Main checker: Run every 30 seconds
-        setInterval(checkDueTasks, 30000);
-        // Initial check on load
-        checkDueTasks();
+        // Main loop: Run every second for accurate timers and notifications
+        setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
             renderTasks();
+            // Run once immediately on load to set initial timer states correctly
+            masterTick();
         });
     </script>
 </body>
