@@ -676,15 +676,6 @@
             opacity: 0.5;
         }
 
-        .search-bar {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            margin-bottom: 16px;
-        }
-
         /* URL styling */
         .highlighted-url {
             background: #e3f2fd;
@@ -1382,6 +1373,10 @@
                 task.subtasks[subtaskIndex].completed = !task.subtasks[subtaskIndex].completed;
                 saveToStorage();
                 renderTasks();
+                // If search is open, refresh results
+                if (document.getElementById('searchInput')) {
+                    performSearch();
+                }
             }
         }
 
