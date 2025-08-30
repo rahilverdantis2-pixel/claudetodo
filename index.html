@@ -830,7 +830,7 @@
         let selectedPriority = 'low';
         let selectedRecurring = null;
         let currentFilter = 'all';
-        let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null}');
+        let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null, "repeatEnabled": false, "repeatCount": 3, "stopWithButton": true}');
         let customSoundURL = notificationSettings.customSoundDataURL;
 
         function saveToStorage() {
@@ -1362,6 +1362,7 @@
             event.stopPropagation();
             const task = tasks.find(t => t.id === taskId);
             if (task) {
+                stopNotificationSequence(taskId);
                 task.completed = !task.completed;
                 saveToStorage();
                 renderTasks();
@@ -1407,6 +1408,7 @@
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
             
+            stopNotificationSequence(taskId);
             const now = new Date();
             let snoozeTime;
             
@@ -1451,6 +1453,7 @@
         }
         
         function confirmDelete(taskId) {
+            stopNotificationSequence(taskId);
             tasks = tasks.filter(t => t.id !== taskId);
             saveToStorage();
             renderTasks();
@@ -1487,6 +1490,18 @@
                         <input type="range" class="custom-slider" id="volumeSlider" min="0" max="100" value="${notificationSettings.volume}">
                         <span id="volumeDisplay">${notificationSettings.volume}%</span>
                     </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="repeatEnabled" ${notificationSettings.repeatEnabled ? 'checked' : ''} onchange="toggleRepeatCountInput()">
+                        <label for="repeatEnabled">Repeat Notification</label>
+                    </div>
+                    <div class="form-group" id="repeatCountGroup" style="display: ${notificationSettings.repeatEnabled ? 'block' : 'none'};">
+                        <label for="repeatCount" class="form-label">Repeat Times</label>
+                        <input type="number" id="repeatCount" class="form-input" value="${notificationSettings.repeatCount}" min="1">
+                    </div>
+                     <div class="checkbox-group full-width">
+                        <input type="checkbox" id="stopWithButton" ${notificationSettings.stopWithButton ? 'checked' : ''}>
+                        <label for="stopWithButton">Allow dismiss from notification</label>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button class="btn notification-test" style="flex: 1; background: #e8f5e8; color: #388e3c;" onclick="testNotification()">🔊 Test Sound</button>
@@ -1506,11 +1521,19 @@
             openBottomSheet();
         }
 
+        function toggleRepeatCountInput() {
+            const isChecked = document.getElementById('repeatEnabled').checked;
+            document.getElementById('repeatCountGroup').style.display = isChecked ? 'block' : 'none';
+        }
+
         function saveAndCloseSettings() {
             notificationSettings.enabled = document.getElementById('notificationsEnabled').checked;
             notificationSettings.duration = parseInt(document.getElementById('notificationDuration').value);
             notificationSettings.volume = parseInt(document.getElementById('volumeSlider').value);
             notificationSettings.customSoundDataURL = customSoundURL;
+            notificationSettings.repeatEnabled = document.getElementById('repeatEnabled').checked;
+            notificationSettings.repeatCount = parseInt(document.getElementById('repeatCount').value) || 3;
+            notificationSettings.stopWithButton = document.getElementById('stopWithButton').checked;
             saveNotificationSettings();
             closeBottomSheet();
         }
@@ -1546,6 +1569,7 @@
             slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
         }
 
+        // --- FULLY RESTORED NOTIFICATION LOGIC ---
         function testNotification() {
             playNotificationSound();
             if (!('Notification' in window)) {
