@@ -889,7 +889,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-around;
+            justify-content: center; /* Vertically center the whole block */
             height: calc(100vh - 80px);
             background-color: #d32f2f;
             color: white;
@@ -994,6 +994,7 @@
             border-radius: 12px;
             width: 100%;
             max-width: 400px;
+            margin-top: 40px; /* Space between controls and settings */
         }
         .p-settings-grid {
             display: grid;
@@ -2229,26 +2230,26 @@
                         <button id="pomodoro-start-btn" class="pomodoro-btn" onclick="startPausePomodoro()">START</button>
                         <button class="pomodoro-btn pomodoro-btn-secondary" onclick="extendPomodoroTime()">+5 MIN</button>
                     </div>
-                </div>
-                <div class="pomodoro-quick-settings">
-                    <div class="p-settings-grid">
-                        <div class="p-settings-group">
-                            <label for="p-set-pomodoro">Pomodoro</label>
-                            <input type="number" id="p-set-pomodoro" value="${pomodoroSettings.pomodoro}" onchange="updatePomodoroSetting('pomodoro', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label for="p-set-short">Short Break</label>
-                            <input type="number" id="p-set-short" value="${pomodoroSettings.short}" onchange="updatePomodoroSetting('short', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label for="p-set-long">Long Break</label>
-                            <input type="number" id="p-set-long" value="${pomodoroSettings.long}" onchange="updatePomodoroSetting('long', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label>View</label>
-                            <div class="p-settings-toggle">
-                                <button class="${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'digital')">12:34</button>
-                                <button class="${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'analog')">🕒</button>
+                    <div class="pomodoro-quick-settings">
+                        <div class="p-settings-grid">
+                            <div class="p-settings-group">
+                                <label for="p-set-pomodoro">Pomodoro</label>
+                                <input type="number" id="p-set-pomodoro" value="${pomodoroSettings.pomodoro}" onchange="updatePomodoroSetting('pomodoro', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label for="p-set-short">Short Break</label>
+                                <input type="number" id="p-set-short" value="${pomodoroSettings.short}" onchange="updatePomodoroSetting('short', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label for="p-set-long">Long Break</label>
+                                <input type="number" id="p-set-long" value="${pomodoroSettings.long}" onchange="updatePomodoroSetting('long', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label>View</label>
+                                <div class="p-settings-toggle">
+                                    <button class="${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'digital')">12:34</button>
+                                    <button class="${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'analog')">🕒</button>
+                                </div>
                             </div>
                         </div>
                     </div>
