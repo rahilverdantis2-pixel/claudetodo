@@ -889,7 +889,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: space-around; /* Changed for centering and spacing */
+            justify-content: space-around; /* Vertically space out items */
             height: calc(100vh - 80px); /* Full height minus header/footer */
             background-color: #d32f2f;
             color: white;
@@ -923,15 +923,16 @@
         }
         #pomodoro-timer-display {
             margin-bottom: 30px;
-            position: relative;
+            width: 200px;
+            height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         #pomodoro-timer {
-            font-size: 64px; /* Adjusted size */
-            font-weight: 200;
-            position: absolute; /* Overlay on analog clock */
+            font-size: 64px;
+            font-weight: 300;
+            letter-spacing: 2px;
         }
         .pomodoro-controls {
             display: flex;
@@ -956,22 +957,26 @@
             padding: 12px 16px;
         }
         /* Solid Analog Clock Styles */
-        .analog-clock-svg {
-            width: 220px;
-            height: 220px;
-            transform: rotate(-90deg);
+        .solid-analog-clock {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
-        .clock-bg, .clock-progress {
-            fill: none;
-            stroke-width: 12;
-        }
-        .clock-bg {
-            stroke: rgba(0,0,0,0.2);
-        }
-        .clock-progress {
-            stroke: white;
-            stroke-linecap: round;
-            transition: stroke-dashoffset 1s linear;
+        .solid-analog-clock::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(white var(--progress-angle), transparent var(--progress-angle));
+            -webkit-mask-image: radial-gradient(transparent 65%, black 66%);
+            mask-image: radial-gradient(transparent 65%, black 66%);
         }
         /* Pomodoro Quick Settings */
         .pomodoro-quick-settings {
@@ -981,19 +986,54 @@
             width: 100%;
             max-width: 400px;
         }
-        .pomodoro-quick-settings .settings-row {
-            margin-bottom: 12px;
+        .p-settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            align-items: center;
         }
-        .pomodoro-quick-settings .form-label {
+        .p-settings-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .p-settings-group label {
+            font-size: 12px;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .p-settings-group input {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
             color: white;
+            border-radius: 6px;
+            padding: 8px;
+            width: 100%;
             font-size: 14px;
-            margin-bottom: 4px;
         }
-        .pomodoro-quick-settings .custom-slider::-webkit-slider-thumb {
-            background: white;
+        .p-settings-group input::-webkit-outer-spin-button,
+        .p-settings-group input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        .pomodoro-quick-settings .custom-slider::-moz-range-thumb {
+        .p-settings-toggle {
+            display: flex;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 4px;
+        }
+        .p-settings-toggle button {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .p-settings-toggle button.active {
             background: white;
+            color: #333;
         }
 
         /* NEW Habits Styles */
@@ -1107,8 +1147,7 @@
         // --- POMODORO STATE ---
         let pomodoroSettings = JSON.parse(localStorage.getItem('pomodoroSettings') || '{"pomodoro": 20, "short": 5, "long": 15, "view": "digital"}');
         let pomodoroMode = 'pomodoro'; // 'pomodoro', 'short', 'long'
-        let pomodoroTimeLeft;
-        let pomodoroCurrentMaxDuration;
+        let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
         let isPomodoroRunning = false;
         let pomodoroInterval = null;
 
@@ -1801,11 +1840,7 @@
 
         // --- CONTEXT-AWARE SETTINGS ---
         function handleSettingsClick() {
-            if (currentView === 'pomodoro') {
-                openPomodoroSettingsSheet();
-            } else {
-                openAppSettingsSheet();
-            }
+            openAppSettingsSheet();
         }
 
         function openAppSettingsSheet() {
@@ -2187,25 +2222,30 @@
                     </div>
                 </div>
                 <div class="pomodoro-quick-settings">
-                    <div class="settings-row">
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Volume</label>
-                            <input type="range" class="custom-slider" id="pomodoroVolumeSlider" min="0" max="100" value="${notificationSettings.volume}" oninput="updatePomodoroVolume(this.value)">
+                    <div class="p-settings-grid">
+                        <div class="p-settings-group">
+                            <label for="p-set-pomodoro">Pomodoro</label>
+                            <input type="number" id="p-set-pomodoro" value="${pomodoroSettings.pomodoro}" onchange="updatePomodoroSetting('pomodoro', this.value)">
                         </div>
-                        <div class="form-group" style="margin:0;">
-                            <label class="form-label">Alert Sound</label>
-                            <button class="btn-option" style="width:100%; background: rgba(255,255,255,0.8); color: #333;" onclick="document.getElementById('pomodoroSoundInput').click()">Change</button>
-                            <input type="file" id="pomodoroSoundInput" onchange="handleCustomSound(event)" style="display: none;">
+                        <div class="p-settings-group">
+                            <label for="p-set-short">Short Break</label>
+                            <input type="number" id="p-set-short" value="${pomodoroSettings.short}" onchange="updatePomodoroSetting('short', this.value)">
+                        </div>
+                        <div class="p-settings-group">
+                            <label for="p-set-long">Long Break</label>
+                            <input type="number" id="p-set-long" value="${pomodoroSettings.long}" onchange="updatePomodoroSetting('long', this.value)">
+                        </div>
+                        <div class="p-settings-group">
+                            <label>View</label>
+                            <div class="p-settings-toggle">
+                                <button class="${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'digital')">12:34</button>
+                                <button class="${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'analog')">🕒</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-            setPomodoroMode(pomodoroMode, true); // Initialize without resetting time
-        }
-
-        function updatePomodoroVolume(value) {
-            notificationSettings.volume = value;
-            saveAppSettings();
+            updatePomodoroUI();
         }
 
         function updatePomodoroUI() {
@@ -2213,22 +2253,15 @@
             if (!display) return;
 
             if (pomodoroSettings.view === 'analog') {
-                const radius = 45;
-                const circumference = 2 * Math.PI * radius;
-                const offset = circumference - (pomodoroTimeLeft / pomodoroCurrentMaxDuration) * circumference;
-                display.innerHTML = `
-                    <svg class="analog-clock-svg" viewBox="0 0 100 100">
-                        <circle class="clock-bg" cx="50" cy="50" r="${radius}"></circle>
-                        <circle class="clock-progress" cx="50" cy="50" r="${radius}" style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"></circle>
-                    </svg>
-                    <div id="pomodoro-timer"></div>`;
+                const totalDuration = pomodoroSettings[pomodoroMode] * 60;
+                const progress = pomodoroTimeLeft / totalDuration;
+                const angle = progress * 360;
+                display.innerHTML = `<div class="solid-analog-clock" style="--progress-angle: ${angle}deg"></div>`;
             } else {
-                display.innerHTML = `<div id="pomodoro-timer"></div>`;
+                const minutes = Math.floor(pomodoroTimeLeft / 60);
+                const seconds = pomodoroTimeLeft % 60;
+                display.innerHTML = `<div id="pomodoro-timer">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div>`;
             }
-            
-            const minutes = Math.floor(pomodoroTimeLeft / 60);
-            const seconds = pomodoroTimeLeft % 60;
-            document.getElementById('pomodoro-timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             
             document.querySelectorAll('.pomodoro-tab').forEach(t => t.classList.remove('active'));
             document.getElementById(`p-tab-${pomodoroMode}`).classList.add('active');
@@ -2241,13 +2274,10 @@
             document.getElementById('pomodoro-start-btn').textContent = isPomodoroRunning ? 'PAUSE' : 'START';
         }
 
-        function setPomodoroMode(mode, isInitializing = false) {
-            if (!isInitializing) {
-                stopPomodoro();
-            }
+        function setPomodoroMode(mode) {
+            stopPomodoro();
             pomodoroMode = mode;
             pomodoroTimeLeft = pomodoroSettings[mode] * 60;
-            pomodoroCurrentMaxDuration = pomodoroSettings[mode] * 60;
             updatePomodoroUI();
         }
 
@@ -2265,13 +2295,11 @@
             clearInterval(pomodoroInterval);
             isPomodoroRunning = false;
             pomodoroTimeLeft = pomodoroSettings[pomodoroMode] * 60;
-            pomodoroCurrentMaxDuration = pomodoroSettings[pomodoroMode] * 60;
             updatePomodoroUI();
         }
 
         function extendPomodoroTime() {
-            pomodoroTimeLeft += 300; // Add 5 minutes (300 seconds)
-            pomodoroCurrentMaxDuration += 300;
+            pomodoroTimeLeft += 300; // Add 5 minutes
             updatePomodoroUI();
         }
 
@@ -2288,49 +2316,19 @@
             }
         }
 
-        function openPomodoroSettingsSheet() {
-            const contentEl = document.getElementById('bottomSheetContent');
-            contentEl.innerHTML = `
-                <div class="sheet-title">Pomodoro Settings</div>
-                <div class="form-group">
-                    <label class="form-label">Pomodoro Duration (minutes)</label>
-                    <input type="number" class="form-input" id="pomodoroDuration" value="${pomodoroSettings.pomodoro}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Short Break Duration (minutes)</label>
-                    <input type="number" class="form-input" id="shortBreakDuration" value="${pomodoroSettings.short}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Long Break Duration (minutes)</label>
-                    <input type="number" class="form-input" id="longBreakDuration" value="${pomodoroSettings.long}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Timer View</label>
-                    <div class="priority-buttons" style="grid-template-columns: 1fr 1fr;">
-                        <button class="btn-option ${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="selectPomodoroView('digital', this)">Digital</button>
-                        <button class="btn-option ${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="selectPomodoroView('analog', this)">Analog</button>
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-save" onclick="saveAndClosePomodoroSettings()">Done</button>
-                </div>
-            `;
-            openBottomSheet();
-        }
-
-        function selectPomodoroView(view, btn) {
-            document.querySelectorAll('#bottomSheetContent .priority-buttons .btn-option').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            pomodoroSettings.view = view;
-        }
-
-        function saveAndClosePomodoroSettings() {
-            pomodoroSettings.pomodoro = parseInt(document.getElementById('pomodoroDuration').value) || 20;
-            pomodoroSettings.short = parseInt(document.getElementById('shortBreakDuration').value) || 5;
-            pomodoroSettings.long = parseInt(document.getElementById('longBreakDuration').value) || 15;
+        function updatePomodoroSetting(key, value) {
+            if (key === 'view') {
+                pomodoroSettings.view = value;
+            } else {
+                pomodoroSettings[key] = parseInt(value) || 1; // Prevent 0 or invalid values
+            }
             savePomodoroSettings();
-            setPomodoroMode(pomodoroMode); // Reset timer with new values
-            closeBottomSheet();
+            
+            // If the setting for the current mode was changed, reset the timer
+            if (key === pomodoroMode) {
+                stopPomodoro();
+            }
+            renderPomodoro(); // Re-render to update input values and view toggle
         }
 
         // --- HABITS FUNCTIONS ---
