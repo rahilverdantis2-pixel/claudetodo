@@ -889,7 +889,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center; /* Vertically center the whole block */
+            justify-content: center;
             height: calc(100vh - 80px);
             background-color: #d32f2f;
             color: white;
@@ -1046,8 +1046,8 @@
             color: #333;
         }
 
-        /* NEW Habits Styles */
-        .habits-container {
+        /* REFINED Habits & Stats Styles */
+        .habits-container, .stats-container {
             padding: 16px;
         }
         .habit-item {
@@ -1063,10 +1063,6 @@
         .habit-item label {
             flex: 1;
             font-size: 16px;
-        }
-        .habit-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
         }
         .points-display {
             display: flex;
@@ -1086,6 +1082,55 @@
             font-size: 24px;
             font-weight: 600;
             color: #333;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .stat-card p {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .bar-chart-container {
+            margin-top: 24px;
+        }
+        .bar-chart {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 150px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .bar {
+            width: 10%;
+            background: #2196F3;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            transition: height 0.3s ease-out;
+        }
+        .bar-label {
+            position: absolute;
+            bottom: -20px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
         }
     </style>
 </head>
@@ -1109,6 +1154,8 @@
     <div id="pomodoroView" class="pomodoro-container" style="display: none;"></div>
 
     <div id="habitsView" class="habits-container" style="display: none;"></div>
+    
+    <div id="statsView" class="stats-container" style="display: none;"></div>
 
     <div id="dateFilterNav" class="date-filter-nav"></div>
 
@@ -1171,7 +1218,21 @@
                 { text: 'bye', completed: false },
                 { text: 'hey', completed: false },
                 { text: 'ok', completed: false }
-            ]
+            ],
+            streak: {
+                current: 0,
+                lastStreakDate: null,
+                recoveryChancesUsedThisMonth: 0,
+                recoveryMonth: new Date().toISOString().slice(0, 7) // YYYY-MM
+            },
+            habitStats: [
+                { text: 'hello', completions: 0 },
+                { text: 'hi', completions: 0 },
+                { text: 'bye', completions: 0 },
+                { text: 'hey', completions: 0 },
+                { text: 'ok', completions: 0 }
+            ],
+            dailyCompletionsHistory: {} // { 'YYYY-MM-DD': count }
         }));
 
         function saveToStorage() {
@@ -2138,14 +2199,16 @@
         // --- VIEW SWITCHING & CALENDAR LOGIC ---
         function switchView(view) {
             currentView = view;
-            const views = ['todo', 'calendar', 'pomodoro', 'habits'];
+            const views = ['todo', 'calendar', 'pomodoro', 'habits', 'stats'];
             views.forEach(v => {
-                document.getElementById(`${v}View`).style.display = 'none';
-                document.getElementById(`${v}-toggle`).classList.remove('active');
+                const el = document.getElementById(`${v}View`);
+                if (el) el.style.display = 'none';
+                document.getElementById(`${v.split('V')[0]}-toggle`)?.classList.remove('active');
             });
 
             document.getElementById(`${view}View`).style.display = 'block';
-            document.getElementById(`${view}-toggle`).classList.add('active');
+            const toggleBtn = document.getElementById(`${view}-toggle`);
+            if(toggleBtn) toggleBtn.classList.add('active');
             
             const headerTitle = view.charAt(0).toUpperCase() + view.slice(1);
             document.getElementById('main-header').textContent = view === 'todo' ? 'Todo' : headerTitle;
@@ -2157,6 +2220,7 @@
                 checkHabitsDate();
                 renderHabits();
             }
+            if (view === 'stats') renderStats();
         }
 
         function renderCalendar() {
@@ -2345,12 +2409,42 @@
             renderPomodoro();
         }
 
-        // --- HABITS FUNCTIONS ---
+        // --- HABITS & STATS FUNCTIONS ---
         function checkHabitsDate() {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const currentMonth = today.toISOString().slice(0, 7);
+
             if (habitsData.lastCheckedDate !== todayStr) {
+                // --- Archive yesterday's data ---
                 const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
                 habitsData.totalPoints += yesterdayPoints;
+                habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
+                habitsData.todayHabits.forEach((habit, index) => {
+                    if (habit.completed) {
+                        habitsData.habitStats[index].completions++;
+                    }
+                });
+
+                // --- Handle Streak Logic ---
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                if (habitsData.streak.recoveryMonth !== currentMonth) {
+                    habitsData.streak.recoveryChancesUsedThisMonth = 0;
+                    habitsData.streak.recoveryMonth = currentMonth;
+                }
+
+                if (habitsData.streak.lastStreakDate !== yesterdayStr && habitsData.streak.lastStreakDate !== todayStr) {
+                    if (habitsData.streak.recoveryChancesUsedThisMonth < 2) {
+                        habitsData.streak.recoveryChancesUsedThisMonth++;
+                    } else {
+                        habitsData.streak.current = 0;
+                    }
+                }
+
+                // --- Reset for today ---
                 habitsData.lastCheckedDate = todayStr;
                 habitsData.todayHabits.forEach(h => h.completed = false);
                 saveHabitsData();
@@ -2361,8 +2455,10 @@
             const container = document.getElementById('habitsView');
             const todayPoints = habitsData.todayHabits.filter(h => h.completed).length;
             let habitsHTML = habitsData.todayHabits.map((habit, index) => `
-                <div class="habit-item">
-                    <input type="checkbox" id="habit-${index}" ${habit.completed ? 'checked' : ''} onchange="toggleHabit(${index})">
+                <div class="habit-item" onclick="toggleHabit(${index})">
+                    <div class="task-checkbox ${habit.completed ? 'completed' : ''}">
+                        ${habit.completed ? '✓' : ''}
+                    </div>
                     <label for="habit-${index}">${habit.text}</label>
                 </div>
             `).join('');
@@ -2373,13 +2469,96 @@
                     <div>Total Points<span>${habitsData.totalPoints}</span></div>
                 </div>
                 <div style="margin-top: 24px;">${habitsHTML}</div>
+                <div style="text-align: center; margin-top: 24px;">
+                    <button class="btn" onclick="switchView('stats')">View Stats</button>
+                </div>
             `;
         }
 
         function toggleHabit(index) {
+            const wasAlreadyCompleted = habitsData.todayHabits.some(h => h.completed);
             habitsData.todayHabits[index].completed = !habitsData.todayHabits[index].completed;
+            const isNowCompleted = habitsData.todayHabits.some(h => h.completed);
+
+            // Streak logic on toggle
+            if (!wasAlreadyCompleted && isNowCompleted) { // First completion of the day
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                const yesterday = new Date(today);
+                yesterday.setDate(today.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+                if (habitsData.streak.lastStreakDate === yesterdayStr) {
+                    habitsData.streak.current++;
+                } else if (habitsData.streak.lastStreakDate !== todayStr) {
+                    habitsData.streak.current = 1;
+                }
+                habitsData.streak.lastStreakDate = todayStr;
+            }
+
             saveHabitsData();
             renderHabits();
+        }
+
+        function renderStats() {
+            const container = document.getElementById('statsView');
+            const sortedHabits = [...habitsData.habitStats].sort((a, b) => b.completions - a.completions);
+            const bestHabit = sortedHabits[0].text;
+            const worstHabit = sortedHabits[sortedHabits.length - 1].text;
+            const totalCompletions = habitsData.habitStats.reduce((sum, h) => sum + h.completions, 0);
+            const totalPossible = Object.keys(habitsData.dailyCompletionsHistory).length * 5;
+            const completionRate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
+
+            // Bar chart data
+            let chartHTML = '';
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayName = days[date.getDay()];
+                const completions = habitsData.dailyCompletionsHistory[dateStr] || 0;
+                const barHeight = (completions / 5) * 100;
+                chartHTML += `<div class="bar" style="height: ${barHeight}%;"><div class="bar-label">${dayName}</div></div>`;
+            }
+
+            container.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Points</h3>
+                        <p>${habitsData.totalPoints}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Daily Streak</h3>
+                        <p>${habitsData.streak.current} 🔥</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Streak Savers Left</h3>
+                        <p>${2 - habitsData.streak.recoveryChancesUsedThisMonth} / 2</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Completion Rate</h3>
+                        <p>${completionRate}%</p>
+                    </div>
+                </div>
+                <div class="stats-grid" style="margin-top: 16px;">
+                     <div class="stat-card">
+                        <h3>Most Consistent</h3>
+                        <p style="font-size: 18px;">${bestHabit}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Could Improve On</h3>
+                        <p style="font-size: 18px;">${worstHabit}</p>
+                    </div>
+                </div>
+                <div class="stat-card bar-chart-container">
+                    <h3>Last 7 Days</h3>
+                    <div class="bar-chart">${chartHTML}</div>
+                </div>
+                <div style="text-align: center; margin-top: 24px;">
+                    <button class="btn" onclick="switchView('habits')">← Back to Habits</button>
+                </div>
+            `;
         }
 
 
