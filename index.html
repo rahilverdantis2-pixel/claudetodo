@@ -1189,19 +1189,12 @@
     </div>
 
     <script>
-        // =================================================================================
-        // DEBUGGING NOTE:
-        // This version includes extensive console.log statements for the Habits & Stats
-        // features. Open your browser's developer console (F12 or Right-Click -> Inspect)
-        // to see the step-by-step data flow. This will help identify any issues.
-        // =================================================================================
-
         let tasks = JSON.parse(localStorage.getItem('todoTasks') || '[]');
         let editingTaskId = null;
         let selectedPriority = 'low';
         let selectedRecurring = null;
         let currentFilter = 'all';
-        let selectedDateForFilter = null; // For calendar clicks
+        let selectedDateForFilter = null;
         let notificationSettings = JSON.parse(localStorage.getItem('notificationSettings') || '{"enabled": true, "duration": 30, "volume": 50, "customSoundDataURL": null, "repeatEnabled": false, "repeatCount": 3, "stopWithButton": true}');
         let customSoundURL = notificationSettings.customSoundDataURL;
         let activeNotificationIntervals = {};
@@ -1210,14 +1203,12 @@
 
         // --- POMODORO STATE ---
         let pomodoroSettings = JSON.parse(localStorage.getItem('pomodoroSettings') || '{"pomodoro": 20, "short": 5, "long": 15, "view": "digital"}');
-        let pomodoroMode = 'pomodoro'; // 'pomodoro', 'short', 'long'
+        let pomodoroMode = 'pomodoro';
         let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
         let isPomodoroRunning = false;
         let pomodoroInterval = null;
 
         // --- HABITS STATE (WITH ROBUST LOADING) ---
-
-        // 1. Define the "perfect" default structure for our habits data.
         const defaultHabitsData = {
             totalPoints: 0,
             lastCheckedDate: null,
@@ -1232,7 +1223,7 @@
                 current: 0,
                 lastStreakDate: null,
                 recoveryChancesUsedThisMonth: 0,
-                recoveryMonth: new Date().toISOString().slice(0, 7) // YYYY-MM
+                recoveryMonth: new Date().toISOString().slice(0, 7)
             },
             habitStats: [
                 { text: 'Drink 8 glasses of water', completions: 0 },
@@ -1241,46 +1232,25 @@
                 { text: 'No junk food', completions: 0 },
                 { text: 'Plan tomorrow', completions: 0 }
             ],
-            dailyCompletionsHistory: {} // { 'YYYY-MM-DD': count }
+            dailyCompletionsHistory: {}
         };
 
-        // 2. Create a function to load data and migrate it if it's old.
         function loadAndMigrateHabitsData() {
-            console.log("Attempting to load habits data from localStorage...");
             const savedData = JSON.parse(localStorage.getItem('habitsData'));
-
-            // If there's no saved data at all, return the fresh default object.
             if (!savedData) {
-                console.log("No saved data found. Using default structure.");
                 return defaultHabitsData;
             }
             
-            console.log("Saved data found. Checking for missing properties (migrating)...");
-
-            // --- MIGRATION CHECKS ---
-            // Check if the top-level 'streak' property exists. If not, add it from the default.
-            if (!savedData.streak) {
-                console.warn("Migration: 'streak' property was missing. Adding default.");
-                savedData.streak = defaultHabitsData.streak;
-            }
-            // Check if the top-level 'habitStats' property exists. If not, add it.
-            if (!savedData.habitStats) {
-                console.warn("Migration: 'habitStats' property was missing. Adding default.");
-                savedData.habitStats = defaultHabitsData.habitStats;
-            }
-            // Check for a nested property to be extra safe.
+            // Merge saved data with defaults to ensure new properties are added
+            if (!savedData.streak) savedData.streak = defaultHabitsData.streak;
+            if (!savedData.habitStats) savedData.habitStats = defaultHabitsData.habitStats;
             if (savedData.streak && typeof savedData.streak.recoveryMonth === 'undefined') {
-                 console.warn("Migration: 'streak.recoveryMonth' was missing. Adding default.");
                  savedData.streak.recoveryMonth = defaultHabitsData.streak.recoveryMonth;
             }
-
-            console.log("Migration complete. Final loaded data:", savedData);
             return savedData;
         }
 
-        // 3. Initialize habitsData using our new robust function.
         let habitsData = loadAndMigrateHabitsData();
-
 
         function saveToStorage() {
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
@@ -1295,7 +1265,6 @@
         }
 
         function saveHabitsData() {
-            console.info('💾 Saving habitsData to localStorage...', JSON.parse(JSON.stringify(habitsData)));
             localStorage.setItem('habitsData', JSON.stringify(habitsData));
         }
 
@@ -1412,7 +1381,6 @@
                 container.innerHTML = html;
             }
 
-            // Manage the date filter navigation buttons
             const dateFilterNav = document.getElementById('dateFilterNav');
             if (currentFilter === 'date') {
                 dateFilterNav.innerHTML = `
@@ -1605,7 +1573,7 @@
 
             if (taskToEdit) {
                 populateSmartSheet(taskToEdit);
-                if (taskToEdit.date && !taskToEdit.id) { // Pre-fill from calendar click
+                if (taskToEdit.date && !taskToEdit.id) {
                     toggleSmartOptions('date', true);
                 }
             }
@@ -1787,7 +1755,7 @@
                     customInterval: document.getElementById('smartCustomInterval')?.value,
                     customUnit: document.getElementById('smartCustomUnit')?.value
                 } : null,
-                notified: false // Ensure new/edited tasks can be notified
+                notified: false
             };
 
             if (editingTaskId) {
@@ -2168,7 +2136,7 @@
 
         function applyFilter(filter) { 
             currentFilter = filter; 
-            document.getElementById('main-header').textContent = 'Todo'; // Reset header
+            document.getElementById('main-header').textContent = 'Todo';
             renderTasks(); 
             if(filter !== 'date') closeBottomSheet(); 
         }
@@ -2394,7 +2362,7 @@
             document.getElementById(`p-tab-${pomodoroMode}`).classList.add('active');
 
             const container = document.getElementById('pomodoroView');
-            container.className = 'pomodoro-container'; // Reset classes
+            container.className = 'pomodoro-container';
             if (pomodoroMode === 'short') container.classList.add('short-break');
             if (pomodoroMode === 'long') container.classList.add('long-break');
 
@@ -2447,7 +2415,7 @@
             if (key === 'view') {
                 pomodoroSettings.view = value;
             } else {
-                pomodoroSettings[key] = parseInt(value) || 1; // Prevent 0 or invalid values
+                pomodoroSettings[key] = parseInt(value) || 1;
             }
             savePomodoroSettings();
             
@@ -2457,72 +2425,47 @@
             renderPomodoro();
         }
 
-        // --- HABITS & STATS FUNCTIONS (WITH DEBUGGING) ---
+        // --- HABITS & STATS FUNCTIONS ---
         function checkHabitsDate() {
-            console.groupCollapsed('📅 checkHabitsDate: Daily Rollover Check');
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
             const currentMonth = today.toISOString().slice(0, 7);
 
-            console.log(`Today's Date: ${todayStr}`);
-            console.log(`Last Checked Date in Data: ${habitsData.lastCheckedDate}`);
-
             if (habitsData.lastCheckedDate !== todayStr) {
-                console.warn("DATES DIFFER! Performing daily rollover and archiving stats.");
-                console.log("Habits data BEFORE archiving:", JSON.parse(JSON.stringify(habitsData)));
-
-                // --- Archive yesterday's data (only if lastCheckedDate is not null) ---
                 if (habitsData.lastCheckedDate) {
                     const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
-                    console.log(`Archiving ${yesterdayPoints} points from ${habitsData.lastCheckedDate}.`);
                     habitsData.totalPoints += yesterdayPoints;
                     habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
                     habitsData.todayHabits.forEach((habit, index) => {
                         if (habit.completed) {
-                            // Ensure habitStats has the same length as todayHabits
                             if(habitsData.habitStats[index]) {
                                 habitsData.habitStats[index].completions++;
                             }
                         }
                     });
-                } else {
-                    console.info("First time running or no previous date, skipping archive.");
                 }
 
-
-                // --- Handle Streak Logic ---
                 const yesterday = new Date(today);
                 yesterday.setDate(today.getDate() - 1);
                 const yesterdayStr = yesterday.toISOString().split('T')[0];
                 
                 if (habitsData.streak.recoveryMonth !== currentMonth) {
-                    console.log("New month detected. Resetting streak savers.");
                     habitsData.streak.recoveryChancesUsedThisMonth = 0;
                     habitsData.streak.recoveryMonth = currentMonth;
                 }
 
                 if (habitsData.streak.lastStreakDate !== yesterdayStr && habitsData.streak.lastStreakDate !== todayStr) {
-                    console.warn(`Streak broken. Last streak date was ${habitsData.streak.lastStreakDate}, yesterday was ${yesterdayStr}.`);
-                    if (habitsData.streak.recoveryChancesUsedThisMonth < 2) {
+                    if (habitsData.streak.recoveryChancesUsedThisMonth < 3) { // CHANGED TO 3
                         habitsData.streak.recoveryChancesUsedThisMonth++;
-                        console.log(`Using a streak saver. Savers used this month: ${habitsData.streak.recoveryChancesUsedThisMonth}`);
                     } else {
-                        console.error("No streak savers left. Resetting streak to 0.");
                         habitsData.streak.current = 0;
                     }
                 }
 
-                // --- Reset for today ---
-                console.log("Resetting today's habits to incomplete.");
                 habitsData.lastCheckedDate = todayStr;
                 habitsData.todayHabits.forEach(h => h.completed = false);
-                
-                console.log("Habits data AFTER archiving and reset:", JSON.parse(JSON.stringify(habitsData)));
                 saveHabitsData();
-            } else {
-                console.log("Dates match, no rollover needed.");
             }
-            console.groupEnd();
         }
 
         function renderHabits() {
@@ -2550,65 +2493,39 @@
         }
 
         function toggleHabit(index) {
-            console.group(`👆 toggleHabit: Toggling habit at index ${index}`);
-            console.log("Habits data BEFORE toggle:", JSON.parse(JSON.stringify(habitsData)));
             const habit = habitsData.todayHabits[index];
-            console.log(`Toggling habit: "${habit.text}". Current state: ${habit.completed}`);
-
-            // 1. Directly toggle the completion status.
             habit.completed = !habit.completed;
-            console.log(`New state: ${habit.completed}`);
 
-            // 2. Check if any habit is completed today *after* the toggle.
             const anyHabitCompletedToday = habitsData.todayHabits.some(h => h.completed);
             const todayStr = new Date().toISOString().split('T')[0];
-            console.log(`Any habit completed today? ${anyHabitCompletedToday}`);
 
-            // 3. Update the streak based on the new state.
             if (anyHabitCompletedToday) {
-                // If this is the first time we're marking a completion for today, update the streak.
                 if (habitsData.streak.lastStreakDate !== todayStr) {
-                    console.log("This is the first completion of the day. Updating streak...");
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
                     const yesterdayStr = yesterday.toISOString().split('T')[0];
 
                     if (habitsData.streak.lastStreakDate === yesterdayStr) {
                         habitsData.streak.current++;
-                        console.log(`Streak continued from yesterday. New streak: ${habitsData.streak.current}`);
                     } else {
                         habitsData.streak.current = 1;
-                        console.log(`New streak started. Current streak: ${habitsData.streak.current}`);
                     }
                     habitsData.streak.lastStreakDate = todayStr;
-                } else {
-                    console.log("Streak already updated for today. No change.");
                 }
             } else {
-                // If the user unticked the last completed habit for the day, we should revert the streak update.
-                console.log("No habits are completed today. Checking if streak needs to be reverted.");
                 if (habitsData.streak.lastStreakDate === todayStr) {
-                    console.warn("Reverting today's streak count because all habits were unticked.");
                     habitsData.streak.current--;
-                    // Set last streak date back to what it was before today
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
                     habitsData.streak.lastStreakDate = yesterday.toISOString().split('T')[0];
                 }
             }
-
-            console.log("Habits data AFTER toggle:", JSON.parse(JSON.stringify(habitsData)));
             
-            // 4. Save and re-render.
             saveHabitsData();
             renderHabits();
-            console.groupEnd();
         }
 
         function renderStats() {
-            console.group('📊 renderStats: Calculating and Displaying Stats');
-            console.log("Using this data for calculations:", JSON.parse(JSON.stringify(habitsData)));
-
             const container = document.getElementById('statsView');
             
             const hasEnoughData = habitsData.habitStats.some(h => h.completions > 0);
@@ -2619,21 +2536,15 @@
                 const sortedHabits = [...habitsData.habitStats].sort((a, b) => b.completions - a.completions);
                 bestHabit = sortedHabits[0].text;
                 worstHabit = sortedHabits[sortedHabits.length - 1].text;
-                console.log("Sorted habits by completion:", sortedHabits);
-            } else {
-                console.warn("Not enough historical data to determine best/worst habits.");
             }
 
             const totalCompletions = habitsData.habitStats.reduce((sum, h) => sum + h.completions, 0);
             const totalDaysWithHistory = Object.keys(habitsData.dailyCompletionsHistory).length;
             const totalPossible = totalDaysWithHistory * habitsData.todayHabits.length;
             const completionRate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
-            console.log(`Calculation: Total Completions (${totalCompletions}) / Total Possible (${totalPossible}) = ${completionRate}%`);
 
-            // Bar chart data
             let chartHTML = '';
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            console.log("Generating bar chart for the last 7 days...");
             for (let i = 6; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(date.getDate() - i);
@@ -2642,7 +2553,6 @@
                 const completions = habitsData.dailyCompletionsHistory[dateStr] || 0;
                 const maxCompletions = habitsData.todayHabits.length || 5;
                 const barHeight = maxCompletions > 0 ? (completions / maxCompletions) * 100 : 0;
-                console.log(` - ${dayName} (${dateStr}): ${completions} completions -> ${barHeight.toFixed(1)}% bar height.`);
                 chartHTML += `<div class="bar" style="height: ${barHeight}%;"><div class="bar-label">${dayName}</div></div>`;
             }
 
@@ -2658,7 +2568,7 @@
                     </div>
                     <div class="stat-card">
                         <h3>Streak Savers Left</h3>
-                        <p>${2 - habitsData.streak.recoveryChancesUsedThisMonth} / 2</p>
+                        <p>${3 - habitsData.streak.recoveryChancesUsedThisMonth} / 3</p>
                     </div>
                     <div class="stat-card">
                         <h3>Completion Rate</h3>
@@ -2683,7 +2593,6 @@
                     <button class="btn" onclick="switchView('habits')">← Back to Habits</button>
                 </div>
             `;
-            console.groupEnd();
         }
 
 
@@ -2691,8 +2600,7 @@
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 App Loaded.');
-            checkHabitsDate(); // Check date on load
+            checkHabitsDate();
             renderTasks();
             masterTick();
         });
