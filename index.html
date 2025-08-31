@@ -887,14 +887,16 @@
         /* REFINED Pomodoro Styles */
         .pomodoro-container {
             display: flex;
-            flex-direction: column;
+            flex-direction: row; /* Changed to row */
             align-items: center;
-            justify-content: space-around; /* Vertically space out items */
+            justify-content: center; /* Center horizontally */
+            gap: 40px; /* Space between timer and settings */
             height: calc(100vh - 80px); /* Full height minus header/footer */
             background-color: #d32f2f;
             color: white;
             transition: background-color 0.5s;
             padding: 16px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
         }
         .pomodoro-container.short-break { background-color: #388e3c; }
         .pomodoro-container.long-break { background-color: #1976d2; }
@@ -928,6 +930,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative; /* For pill timer positioning */
         }
         #pomodoro-timer {
             font-size: 64px;
@@ -978,17 +981,25 @@
             -webkit-mask-image: radial-gradient(transparent 65%, black 66%);
             mask-image: radial-gradient(transparent 65%, black 66%);
         }
+        .pill-timer {
+            background: rgba(0,0,0,0.2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 500;
+        }
         /* Pomodoro Quick Settings */
         .pomodoro-quick-settings {
             background: rgba(0,0,0,0.1);
             padding: 16px;
             border-radius: 12px;
             width: 100%;
-            max-width: 400px;
+            max-width: 300px;
         }
         .p-settings-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
             align-items: center;
         }
@@ -2252,15 +2263,20 @@
             const display = document.getElementById('pomodoro-timer-display');
             if (!display) return;
 
+            const minutes = Math.floor(pomodoroTimeLeft / 60);
+            const seconds = pomodoroTimeLeft % 60;
+            const digitalTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
             if (pomodoroSettings.view === 'analog') {
                 const totalDuration = pomodoroSettings[pomodoroMode] * 60;
                 const progress = pomodoroTimeLeft / totalDuration;
                 const angle = progress * 360;
-                display.innerHTML = `<div class="solid-analog-clock" style="--progress-angle: ${angle}deg"></div>`;
+                display.innerHTML = `
+                    <div class="solid-analog-clock" style="--progress-angle: ${angle}deg">
+                        <div class="pill-timer">${digitalTime}</div>
+                    </div>`;
             } else {
-                const minutes = Math.floor(pomodoroTimeLeft / 60);
-                const seconds = pomodoroTimeLeft % 60;
-                display.innerHTML = `<div id="pomodoro-timer">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div>`;
+                display.innerHTML = `<div id="pomodoro-timer">${digitalTime}</div>`;
             }
             
             document.querySelectorAll('.pomodoro-tab').forEach(t => t.classList.remove('active'));
@@ -2325,7 +2341,7 @@
             savePomodoroSettings();
             
             // If the setting for the current mode was changed, reset the timer
-            if (key === pomodoroMode) {
+            if (key === pomodoroMode && !isPomodoroRunning) {
                 stopPomodoro();
             }
             renderPomodoro(); // Re-render to update input values and view toggle
