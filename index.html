@@ -1059,12 +1059,10 @@
             border-radius: 8px;
             margin-bottom: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            cursor: pointer;
         }
         .habit-item label {
             flex: 1;
             font-size: 16px;
-            pointer-events: none; /* Allow click to pass through to parent */
         }
         .points-display {
             display: flex;
@@ -1157,7 +1155,7 @@
 
     <div id="habitsView" class="habits-container" style="display: none;"></div>
     
-    <div id="statsView" class="stats-container main-content" style="display: none;"></div>
+    <div id="statsView" class="stats-container" style="display: none;"></div>
 
     <div id="dateFilterNav" class="date-filter-nav"></div>
 
@@ -2296,26 +2294,26 @@
                         <button id="pomodoro-start-btn" class="pomodoro-btn" onclick="startPausePomodoro()">START</button>
                         <button class="pomodoro-btn pomodoro-btn-secondary" onclick="extendPomodoroTime()">+5 MIN</button>
                     </div>
-                </div>
-                <div class="pomodoro-quick-settings">
-                    <div class="p-settings-grid">
-                        <div class="p-settings-group">
-                            <label for="p-set-pomodoro">Pomodoro</label>
-                            <input type="number" id="p-set-pomodoro" value="${pomodoroSettings.pomodoro}" onchange="updatePomodoroSetting('pomodoro', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label for="p-set-short">Short Break</label>
-                            <input type="number" id="p-set-short" value="${pomodoroSettings.short}" onchange="updatePomodoroSetting('short', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label for="p-set-long">Long Break</label>
-                            <input type="number" id="p-set-long" value="${pomodoroSettings.long}" onchange="updatePomodoroSetting('long', this.value)">
-                        </div>
-                        <div class="p-settings-group">
-                            <label>View</label>
-                            <div class="p-settings-toggle">
-                                <button class="${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'digital')">12:34</button>
-                                <button class="${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'analog')">🕒</button>
+                    <div class="pomodoro-quick-settings">
+                        <div class="p-settings-grid">
+                            <div class="p-settings-group">
+                                <label for="p-set-pomodoro">Pomodoro</label>
+                                <input type="number" id="p-set-pomodoro" value="${pomodoroSettings.pomodoro}" onchange="updatePomodoroSetting('pomodoro', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label for="p-set-short">Short Break</label>
+                                <input type="number" id="p-set-short" value="${pomodoroSettings.short}" onchange="updatePomodoroSetting('short', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label for="p-set-long">Long Break</label>
+                                <input type="number" id="p-set-long" value="${pomodoroSettings.long}" onchange="updatePomodoroSetting('long', this.value)">
+                            </div>
+                            <div class="p-settings-group">
+                                <label>View</label>
+                                <div class="p-settings-toggle">
+                                    <button class="${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'digital')">12:34</button>
+                                    <button class="${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="updatePomodoroSetting('view', 'analog')">🕒</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2421,9 +2419,7 @@
                 // --- Archive yesterday's data ---
                 const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
                 habitsData.totalPoints += yesterdayPoints;
-                if (habitsData.lastCheckedDate) { // Only record if there was a previous date
-                    habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
-                }
+                habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
                 habitsData.todayHabits.forEach((habit, index) => {
                     if (habit.completed) {
                         habitsData.habitStats[index].completions++;
@@ -2463,7 +2459,7 @@
                     <div class="task-checkbox ${habit.completed ? 'completed' : ''}">
                         ${habit.completed ? '✓' : ''}
                     </div>
-                    <label>${habit.text}</label>
+                    <label for="habit-${index}">${habit.text}</label>
                 </div>
             `).join('');
 
@@ -2480,12 +2476,12 @@
         }
 
         function toggleHabit(index) {
-            const wasAnyCompleted = habitsData.todayHabits.some(h => h.completed);
+            const wasAlreadyCompleted = habitsData.todayHabits.some(h => h.completed);
             habitsData.todayHabits[index].completed = !habitsData.todayHabits[index].completed;
-            const isAnyCompletedNow = habitsData.todayHabits.some(h => h.completed);
+            const isNowCompleted = habitsData.todayHabits.some(h => h.completed);
 
             // Streak logic on toggle
-            if (!wasAnyCompleted && isAnyCompletedNow) { // First completion of the day
+            if (!wasAlreadyCompleted && isNowCompleted) { // First completion of the day
                 const today = new Date();
                 const todayStr = today.toISOString().split('T')[0];
                 const yesterday = new Date(today);
