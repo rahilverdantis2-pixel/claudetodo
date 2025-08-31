@@ -1059,10 +1059,12 @@
             border-radius: 8px;
             margin-bottom: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            cursor: pointer;
         }
         .habit-item label {
             flex: 1;
             font-size: 16px;
+            pointer-events: none; /* Clicks pass through to parent div */
         }
         .points-display {
             display: flex;
@@ -2208,7 +2210,12 @@
 
             document.getElementById(`${view}View`).style.display = 'block';
             const toggleBtn = document.getElementById(`${view}-toggle`);
-            if(toggleBtn) toggleBtn.classList.add('active');
+            if(toggleBtn) {
+                toggleBtn.classList.add('active');
+            } else {
+                // If no toggle button (like for stats), keep the parent active
+                document.getElementById('habits-toggle').classList.add('active');
+            }
             
             const headerTitle = view.charAt(0).toUpperCase() + view.slice(1);
             document.getElementById('main-header').textContent = view === 'todo' ? 'Todo' : headerTitle;
@@ -2419,7 +2426,9 @@
                 // --- Archive yesterday's data ---
                 const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
                 habitsData.totalPoints += yesterdayPoints;
-                habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
+                if (habitsData.lastCheckedDate) { // Only record if there was a previous date
+                    habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
+                }
                 habitsData.todayHabits.forEach((habit, index) => {
                     if (habit.completed) {
                         habitsData.habitStats[index].completions++;
@@ -2459,14 +2468,14 @@
                     <div class="task-checkbox ${habit.completed ? 'completed' : ''}">
                         ${habit.completed ? '✓' : ''}
                     </div>
-                    <label for="habit-${index}">${habit.text}</label>
+                    <label>${habit.text}</label>
                 </div>
             `).join('');
 
             container.innerHTML = `
                 <div class="points-display">
                     <div>Today's Points<span>${todayPoints}</span></div>
-                    <div>Total Points<span>${habitsData.totalPoints}</span></div>
+                    <div>Total Points<span>${habitsData.totalPoints + todayPoints}</span></div>
                 </div>
                 <div style="margin-top: 24px;">${habitsHTML}</div>
                 <div style="text-align: center; margin-top: 24px;">
@@ -2476,12 +2485,12 @@
         }
 
         function toggleHabit(index) {
-            const wasAlreadyCompleted = habitsData.todayHabits.some(h => h.completed);
+            const wasAnyCompleted = habitsData.todayHabits.some(h => h.completed);
             habitsData.todayHabits[index].completed = !habitsData.todayHabits[index].completed;
-            const isNowCompleted = habitsData.todayHabits.some(h => h.completed);
+            const isAnyCompletedNow = habitsData.todayHabits.some(h => h.completed);
 
             // Streak logic on toggle
-            if (!wasAlreadyCompleted && isNowCompleted) { // First completion of the day
+            if (!wasAnyCompleted && isAnyCompletedNow) { // First completion of the day
                 const today = new Date();
                 const todayStr = today.toISOString().split('T')[0];
                 const yesterday = new Date(today);
@@ -2502,11 +2511,21 @@
 
         function renderStats() {
             const container = document.getElementById('statsView');
-            const sortedHabits = [...habitsData.habitStats].sort((a, b) => b.completions - a.completions);
+            
+            // Create a temporary, live version of stats for display
+            const liveHabitStats = JSON.parse(JSON.stringify(habitsData.habitStats));
+            const todayPoints = habitsData.todayHabits.filter(h => h.completed).length;
+            habitsData.todayHabits.forEach((habit, index) => {
+                if (habit.completed) {
+                    liveHabitStats[index].completions++;
+                }
+            });
+
+            const sortedHabits = liveHabitStats.sort((a, b) => b.completions - a.completions);
             const bestHabit = sortedHabits[0].text;
             const worstHabit = sortedHabits[sortedHabits.length - 1].text;
-            const totalCompletions = habitsData.habitStats.reduce((sum, h) => sum + h.completions, 0);
-            const totalPossible = Object.keys(habitsData.dailyCompletionsHistory).length * 5;
+            const totalCompletions = liveHabitStats.reduce((sum, h) => sum + h.completions, 0);
+            const totalPossible = (Object.keys(habitsData.dailyCompletionsHistory).length * 5) + todayPoints;
             const completionRate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
 
             // Bar chart data
@@ -2517,7 +2536,10 @@
                 date.setDate(date.getDate() - i);
                 const dateStr = date.toISOString().split('T')[0];
                 const dayName = days[date.getDay()];
-                const completions = habitsData.dailyCompletionsHistory[dateStr] || 0;
+                let completions = habitsData.dailyCompletionsHistory[dateStr] || 0;
+                if (dateStr === habitsData.lastCheckedDate) {
+                    completions = todayPoints;
+                }
                 const barHeight = (completions / 5) * 100;
                 chartHTML += `<div class="bar" style="height: ${barHeight}%;"><div class="bar-label">${dayName}</div></div>`;
             }
@@ -2526,7 +2548,7 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Points</h3>
-                        <p>${habitsData.totalPoints}</p>
+                        <p>${habitsData.totalPoints + todayPoints}</p>
                     </div>
                     <div class="stat-card">
                         <h3>Daily Streak</h3>
