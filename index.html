@@ -755,7 +755,7 @@
             grid-template-rows: 1fr 1fr;
             gap: 2px;
             background: #f0f0f0;
-            border-radius: 28px;
+            border-radius: 14px;
             padding: 4px;
             width: 56px;
             height: 56px;
@@ -771,7 +771,7 @@
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s, color 0.2s, transform 0.2s;
-            border-radius: 50%;
+            border-radius: 10px;
         }
         .toggle-btn.active {
             background: #fff;
@@ -884,20 +884,25 @@
             transform: translateY(0);
         }
 
-        /* NEW Pomodoro Styles */
+        /* REFINED Pomodoro Styles */
         .pomodoro-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: calc(100vh - 160px); /* Full height minus header/footer */
+            height: calc(100vh - 80px); /* Full height minus header/footer */
             background-color: #d32f2f;
             color: white;
             transition: background-color 0.5s;
+            padding: 16px;
         }
         .pomodoro-container.short-break { background-color: #388e3c; }
         .pomodoro-container.long-break { background-color: #1976d2; }
-
+        .pomodoro-main-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
         .pomodoro-tabs {
             display: flex;
             gap: 8px;
@@ -916,14 +921,17 @@
             background: white;
             color: #333;
         }
+        #pomodoro-timer-display {
+            margin-bottom: 30px;
+        }
         #pomodoro-timer {
             font-size: 80px;
             font-weight: 200;
-            margin-bottom: 30px;
         }
         .pomodoro-controls {
             display: flex;
             gap: 16px;
+            align-items: center;
         }
         .pomodoro-btn {
             padding: 12px 32px;
@@ -936,10 +944,37 @@
             color: #333;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .pomodoro-btn-stop {
+        .pomodoro-btn-secondary {
             background: transparent;
             color: white;
             box-shadow: none;
+            padding: 12px 16px;
+        }
+        /* Analog Clock Styles */
+        .analog-clock {
+            width: 200px;
+            height: 200px;
+            border: 5px solid white;
+            border-radius: 50%;
+            position: relative;
+        }
+        .clock-hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            background: white;
+        }
+        .minute-hand {
+            width: 4px;
+            height: 80px;
+            margin-left: -2px;
+        }
+        .second-hand {
+            width: 2px;
+            height: 90px;
+            margin-left: -1px;
+            background: #ffcdd2;
         }
 
         /* NEW Habits Styles */
@@ -987,7 +1022,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="settings-icon" onclick="openSettingsSheet()">
+        <div class="settings-icon" onclick="handleSettingsClick()">
             ⚙️
         </div>
         <h1 id="main-header">Todo</h1>
@@ -1048,9 +1083,10 @@
         let customSoundURL = notificationSettings.customSoundDataURL;
         let activeNotificationIntervals = {};
         let calendarDate = new Date();
+        let currentView = 'todo';
 
         // --- NEW POMODORO STATE ---
-        let pomodoroSettings = JSON.parse(localStorage.getItem('pomodoroSettings') || '{"pomodoro": 20, "short": 5, "long": 15}');
+        let pomodoroSettings = JSON.parse(localStorage.getItem('pomodoroSettings') || '{"pomodoro": 20, "short": 5, "long": 15, "view": "digital"}');
         let pomodoroMode = 'pomodoro'; // 'pomodoro', 'short', 'long'
         let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
         let isPomodoroRunning = false;
@@ -1073,8 +1109,11 @@
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
         }
 
-        function saveNotificationSettings() {
+        function saveAppSettings() {
             localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+        }
+
+        function savePomodoroSettings() {
             localStorage.setItem('pomodoroSettings', JSON.stringify(pomodoroSettings));
         }
 
@@ -1740,26 +1779,19 @@
             closeBottomSheet();
         }
 
-        // --- OTHER SHEET-BASED FUNCTIONS ---
+        // --- CONTEXT-AWARE SETTINGS ---
+        function handleSettingsClick() {
+            if (currentView === 'pomodoro') {
+                openPomodoroSettingsSheet();
+            } else {
+                openAppSettingsSheet();
+            }
+        }
 
-        function openSettingsSheet() {
+        function openAppSettingsSheet() {
             const contentEl = document.getElementById('bottomSheetContent');
             contentEl.innerHTML = `
-                <div class="sheet-title">Settings</div>
-                <div class="form-group">
-                    <label class="form-label">Pomodoro Duration (minutes)</label>
-                    <input type="number" class="form-input" id="pomodoroDuration" value="${pomodoroSettings.pomodoro}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Short Break Duration (minutes)</label>
-                    <input type="number" class="form-input" id="shortBreakDuration" value="${pomodoroSettings.short}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Long Break Duration (minutes)</label>
-                    <input type="number" class="form-input" id="longBreakDuration" value="${pomodoroSettings.long}">
-                </div>
-                <hr style="margin: 24px 0; border: 1px solid #f0f0f0;">
-                <div class="sheet-title" style="font-size: 18px; margin-top: 0;">Notification Settings</div>
+                <div class="sheet-title">App Settings</div>
                 <div class="settings-row">
                     <div class="checkbox-group" style="margin:0;">
                         <input type="checkbox" id="notificationsEnabled" ${notificationSettings.enabled ? 'checked' : ''}>
@@ -1803,7 +1835,7 @@
                 </div>
                 <div class="modal-actions">
                     <button class="btn notification-test" style="flex: 1; background: #e8f5e8; color: #388e3c;" onclick="testNotification()">🔊 Test Sound</button>
-                    <button class="btn btn-save" style="flex: 1;" onclick="saveAndCloseSettings()">Done</button>
+                    <button class="btn btn-save" style="flex: 1;" onclick="saveAndCloseAppSettings()">Done</button>
                 </div>
             `;
             
@@ -1819,19 +1851,7 @@
             openBottomSheet();
         }
 
-        function toggleRepeatCountInput() {
-            const isChecked = document.getElementById('repeatEnabled').checked;
-            document.getElementById('repeatCountGroup').style.display = isChecked ? 'block' : 'none';
-        }
-
-        function saveAndCloseSettings() {
-            // Pomodoro settings
-            pomodoroSettings.pomodoro = parseInt(document.getElementById('pomodoroDuration').value) || 20;
-            pomodoroSettings.short = parseInt(document.getElementById('shortBreakDuration').value) || 5;
-            pomodoroSettings.long = parseInt(document.getElementById('longBreakDuration').value) || 15;
-            stopPomodoro(); // Reset timer with new values
-
-            // Notification settings
+        function saveAndCloseAppSettings() {
             notificationSettings.enabled = document.getElementById('notificationsEnabled').checked;
             notificationSettings.duration = parseInt(document.getElementById('notificationDuration').value);
             notificationSettings.volume = parseInt(document.getElementById('volumeSlider').value);
@@ -1839,8 +1859,7 @@
             notificationSettings.repeatEnabled = document.getElementById('repeatEnabled').checked;
             notificationSettings.repeatCount = parseInt(document.getElementById('repeatCount').value) || 3;
             notificationSettings.stopWithButton = document.getElementById('stopWithButton').checked;
-            
-            saveNotificationSettings();
+            saveAppSettings();
             closeBottomSheet();
         }
 
@@ -1875,28 +1894,10 @@
             slider.style.background = `linear-gradient(to right, #2196F3 ${percentage}%, #e0e0e0 ${percentage}%)`;
         }
 
-        // --- FULLY RESTORED NOTIFICATION LOGIC ---
+        // --- NOTIFICATION LOGIC ---
         function testNotification() {
-            // Play the first sound immediately
             playNotificationSound();
             showTestBrowserNotification();
-
-            // Set up repeats if enabled
-            const repeatEnabled = document.getElementById('repeatEnabled').checked;
-            if (!repeatEnabled) return;
-
-            const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
-            if (repeatCount <= 1) return;
-
-            let repeatCounter = 1; // We've already played it once
-            const interval = setInterval(() => {
-                if (repeatCounter >= repeatCount) {
-                    clearInterval(interval);
-                    return;
-                }
-                playNotificationSound();
-                repeatCounter++;
-            }, 2000); // 2-second delay between subsequent sounds
         }
         
         function showTestBrowserNotification() {
@@ -1920,8 +1921,7 @@
         }
 
         function playNotificationSound() {
-            const volumeSlider = document.getElementById('volumeSlider');
-            const liveVolume = volumeSlider ? volumeSlider.value / 100 : notificationSettings.volume / 100;
+            const liveVolume = notificationSettings.volume / 100;
 
             if (customSoundURL) {
                 const audio = new Audio(customSoundURL);
@@ -1948,7 +1948,6 @@
                 oscillator.stop(audioContext.currentTime + 1);
             } catch (error) {
                 console.error("Audio Context Error:", error);
-                alert('Sound playback not supported in this browser.');
             }
         }
 
@@ -2033,75 +2032,23 @@
                 : '<p style="text-align: center; color: #999; padding: 20px;">No tasks found</p>';
         }
 
-        // New function to trigger notification for a due task
         function triggerNotification(task) {
           if (!notificationSettings.enabled) return;
-
-          // Play initial sound
           playNotificationSound();
-
-          // Browser notification
-          if ('Notification' in window) {
-            if (Notification.permission === 'granted') {
+          if ('Notification' in window && Notification.permission === 'granted') {
               const notif = new Notification('Task Due!', {
                 body: task.title + (task.description ? `\n${task.description}` : ''),
                 tag: task.id
               });
-              // Close after duration (in ms)
               setTimeout(() => notif.close(), notificationSettings.duration * 1000);
-            } else if (Notification.permission !== 'denied') {
-              Notification.requestPermission().then(permission => {
-                if (permission === 'granted') triggerNotification(task);  // Retry
-              });
-            }
-          }
-
-          // Handle repeats
-          if (notificationSettings.repeatEnabled) {
-            let repeatCounter = 1;  // Already played once
-            const repeatInterval = setInterval(() => {
-              if (repeatCounter >= notificationSettings.repeatCount) {
-                clearInterval(repeatInterval);
-                return;
-              }
-              playNotificationSound();
-              repeatCounter++;
-            }, 2000);  // Delay between repeats
-
-            // If stopWithButton is enabled, show a simple dismiss button (appends to body)
-            if (notificationSettings.stopWithButton) {
-              const dismissBtn = document.createElement('button');
-              dismissBtn.textContent = 'Stop Notification';
-              dismissBtn.style.position = 'fixed';
-              dismissBtn.style.bottom = '100px';
-              dismissBtn.style.left = '50%';
-              dismissBtn.style.transform = 'translateX(-50%)';
-              dismissBtn.style.padding = '10px 20px';
-              dismissBtn.style.background = '#d32f2f';
-              dismissBtn.style.color = 'white';
-              dismissBtn.style.border = 'none';
-              dismissBtn.style.borderRadius = '8px';
-              dismissBtn.style.cursor = 'pointer';
-              dismissBtn.style.zIndex = '2000';
-              dismissBtn.onclick = () => {
-                clearInterval(repeatInterval);
-                dismissBtn.remove();
-              };
-              document.body.appendChild(dismissBtn);
-
-              // Auto-remove after duration
-              setTimeout(() => dismissBtn.remove(), notificationSettings.duration * 1000);
-            }
           }
         }
 
-        // New combined function for real-time updates and notifications
         function masterTick() {
             const now = new Date();
             let needsSave = false;
 
             tasks.forEach(task => {
-                // --- Notification Logic ---
                 if (task.date && task.time && !task.completed && !task.notified) {
                     const due = new Date(`${task.date}T${task.time}`);
                     if (due <= now) {
@@ -2110,32 +2057,22 @@
                         needsSave = true;
                     }
                 }
-
-                // --- UI Timer Update Logic ---
                 const timerEl = document.getElementById(`timer-${task.id}`);
                 if (timerEl && task.date && task.time) {
                     const timeInfo = getTimeRemaining(task.date, task.time);
                     const newHTML = `${task.time ? '<span class="alarm-icon">⏰</span>' : ''} ${timeInfo.text}`;
-                    
-                    // Only update DOM if content has changed to be more efficient
-                    if (timerEl.innerHTML !== newHTML) {
-                        timerEl.innerHTML = newHTML;
-                    }
-                    
+                    if (timerEl.innerHTML !== newHTML) timerEl.innerHTML = newHTML;
                     const newClassName = `pill ${timeInfo.isOverdue ? 'overdue' : 'time-remaining'}`;
-                    if (timerEl.className !== newClassName) {
-                        timerEl.className = newClassName;
-                    }
+                    if (timerEl.className !== newClassName) timerEl.className = newClassName;
                 }
             });
 
-            if (needsSave) {
-                saveToStorage();
-            }
+            if (needsSave) saveToStorage();
         }
 
-        // --- NEW CALENDAR LOGIC ---
+        // --- VIEW SWITCHING & CALENDAR LOGIC ---
         function switchView(view) {
+            currentView = view;
             const views = ['todo', 'calendar', 'pomodoro', 'habits'];
             views.forEach(v => {
                 document.getElementById(`${v}View`).style.display = 'none';
@@ -2145,9 +2082,8 @@
             document.getElementById(`${view}View`).style.display = 'block';
             document.getElementById(`${view}-toggle`).classList.add('active');
             
-            document.getElementById('main-header').textContent = view.charAt(0).toUpperCase() + view.slice(1);
-            if (view === 'todo') document.getElementById('main-header').textContent = 'Todo';
-
+            const headerTitle = view.charAt(0).toUpperCase() + view.slice(1);
+            document.getElementById('main-header').textContent = view === 'todo' ? 'Todo' : headerTitle;
 
             if (view === 'todo') renderTasks();
             if (view === 'calendar') renderCalendar();
@@ -2162,53 +2098,30 @@
             const calendarContainer = document.getElementById('calendarView');
             const month = calendarDate.getMonth();
             const year = calendarDate.getFullYear();
-
-            // Create a set of dates that have tasks for quick lookup
             const datesWithTasks = new Set(tasks.filter(t => t.date).map(t => t.date));
-
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             const daysInMonth = lastDay.getDate();
-            const startDayIndex = firstDay.getDay(); // 0 for Sunday, 1 for Monday...
-
+            const startDayIndex = firstDay.getDay();
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-            let html = `
-                <div class="calendar-header">
+            let html = `<div class="calendar-header">
                     <button class="calendar-nav" onclick="prevMonth()">&#8249;</button>
                     <span>${monthNames[month]} ${year}</span>
                     <button class="calendar-nav" onclick="nextMonth()">&#8250;</button>
-                </div>
-                <div class="calendar-grid">
-            `;
-
-            // Day names header
-            dayNames.forEach(day => {
-                html += `<div class="calendar-day day-name">${day}</div>`;
-            });
-
-            // Padding for days before the 1st of the month
-            for (let i = 0; i < startDayIndex; i++) {
-                html += `<div></div>`; // Use empty div for placeholder
-            }
-
-            // Days of the current month
+                </div><div class="calendar-grid">`;
+            dayNames.forEach(day => { html += `<div class="calendar-day day-name">${day}</div>`; });
+            for (let i = 0; i < startDayIndex; i++) { html += `<div></div>`; }
             const today = new Date();
             for (let day = 1; day <= daysInMonth; day++) {
                 let classes = 'calendar-day clickable-day';
                 const currentDay = new Date(year, month, day);
                 const dayOfWeek = currentDay.getDay();
-                
                 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 let clickHandler;
-
-                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-                    classes += ' today';
-                }
-                if (dayOfWeek === 0 || dayOfWeek === 6) { // Sunday or Saturday
-                    classes += ' weekend';
-                }
+                if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) classes += ' today';
+                if (dayOfWeek === 0 || dayOfWeek === 6) classes += ' weekend';
                 if (datesWithTasks.has(dateString)) {
                     classes += ' has-tasks';
                     clickHandler = `onclick="showTasksForDate('${dateString}')"`;
@@ -2217,64 +2130,70 @@
                 }
                 html += `<div class="${classes}" ${clickHandler}>${day}</div>`;
             }
-
-            html += `</div>`; // Close calendar-grid
+            html += `</div>`;
             calendarContainer.innerHTML = html;
         }
 
-        function prevMonth() {
-            calendarDate.setMonth(calendarDate.getMonth() - 1);
-            renderCalendar();
-        }
-
-        function nextMonth() {
-            calendarDate.setMonth(calendarDate.getMonth() + 1);
-            renderCalendar();
-        }
+        function prevMonth() { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); }
+        function nextMonth() { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); }
 
         function showTasksForDate(dateString) {
             currentFilter = 'date';
             selectedDateForFilter = dateString;
-            
-            const dateObj = new Date(dateString + 'T00:00:00'); // Avoid timezone issues
+            const dateObj = new Date(dateString + 'T00:00:00');
             document.getElementById('main-header').textContent = `Tasks for ${dateObj.toLocaleDateString()}`;
-
             switchView('todo');
         }
 
         function addTaskForDate(dateString) {
-            // Open the smart add sheet with the date pre-filled
             openSmartAddTaskSheet({ date: dateString });
         }
 
-        // --- NEW POMODORO FUNCTIONS ---
+        // --- POMODORO FUNCTIONS ---
         function renderPomodoro() {
             const container = document.getElementById('pomodoroView');
             container.innerHTML = `
-                <div class="pomodoro-tabs">
-                    <button id="p-tab-pomodoro" class="pomodoro-tab" onclick="setPomodoroMode('pomodoro')">Pomodoro</button>
-                    <button id="p-tab-short" class="pomodoro-tab" onclick="setPomodoroMode('short')">Short Break</button>
-                    <button id="p-tab-long" class="pomodoro-tab" onclick="setPomodoroMode('long')">Long Break</button>
-                </div>
-                <div id="pomodoro-timer"></div>
-                <div class="pomodoro-controls">
-                    <button id="pomodoro-start-btn" class="pomodoro-btn" onclick="startPausePomodoro()">START</button>
-                    <button class="pomodoro-btn pomodoro-btn-stop" onclick="stopPomodoro()">STOP</button>
+                <div class="pomodoro-main-block">
+                    <div class="pomodoro-tabs">
+                        <button id="p-tab-pomodoro" class="pomodoro-tab" onclick="setPomodoroMode('pomodoro')">Pomodoro</button>
+                        <button id="p-tab-short" class="pomodoro-tab" onclick="setPomodoroMode('short')">Short Break</button>
+                        <button id="p-tab-long" class="pomodoro-tab" onclick="setPomodoroMode('long')">Long Break</button>
+                    </div>
+                    <div id="pomodoro-timer-display"></div>
+                    <div class="pomodoro-controls">
+                        <button class="pomodoro-btn pomodoro-btn-secondary" onclick="stopPomodoro()">STOP</button>
+                        <button id="pomodoro-start-btn" class="pomodoro-btn" onclick="startPausePomodoro()">START</button>
+                        <button class="pomodoro-btn pomodoro-btn-secondary" onclick="extendPomodoroTime()">+5 MIN</button>
+                    </div>
                 </div>
             `;
             updatePomodoroUI();
         }
 
         function updatePomodoroUI() {
-            const minutes = Math.floor(pomodoroTimeLeft / 60);
-            const seconds = pomodoroTimeLeft % 60;
-            document.getElementById('pomodoro-timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            const display = document.getElementById('pomodoro-timer-display');
+            if (!display) return;
+
+            if (pomodoroSettings.view === 'analog') {
+                const totalDuration = pomodoroSettings[pomodoroMode] * 60;
+                const secondDeg = (pomodoroTimeLeft % 60) * 6;
+                const minuteDeg = (pomodoroTimeLeft / totalDuration) * 360;
+                display.innerHTML = `
+                    <div class="analog-clock">
+                        <div class="clock-hand minute-hand" style="transform: translateX(-50%) rotate(${minuteDeg}deg);"></div>
+                        <div class="clock-hand second-hand" style="transform: translateX(-50%) rotate(${secondDeg}deg);"></div>
+                    </div>`;
+            } else {
+                const minutes = Math.floor(pomodoroTimeLeft / 60);
+                const seconds = pomodoroTimeLeft % 60;
+                display.innerHTML = `<div id="pomodoro-timer">${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div>`;
+            }
             
             document.querySelectorAll('.pomodoro-tab').forEach(t => t.classList.remove('active'));
             document.getElementById(`p-tab-${pomodoroMode}`).classList.add('active');
 
             const container = document.getElementById('pomodoroView');
-            container.classList.remove('short-break', 'long-break');
+            container.className = 'pomodoro-container'; // Reset classes
             if (pomodoroMode === 'short') container.classList.add('short-break');
             if (pomodoroMode === 'long') container.classList.add('long-break');
 
@@ -2305,32 +2224,75 @@
             updatePomodoroUI();
         }
 
+        function extendPomodoroTime() {
+            pomodoroTimeLeft += 300; // Add 5 minutes
+            updatePomodoroUI();
+        }
+
         function pomodoroTick() {
             pomodoroTimeLeft--;
             if (pomodoroTimeLeft < 0) {
                 clearInterval(pomodoroInterval);
                 isPomodoroRunning = false;
                 playNotificationSound();
-                // Cycle logic
-                if (pomodoroMode === 'pomodoro') {
-                    setPomodoroMode('short');
-                } else {
-                    setPomodoroMode('pomodoro');
-                }
+                if (pomodoroMode === 'pomodoro') setPomodoroMode('short');
+                else setPomodoroMode('pomodoro');
             } else {
                 updatePomodoroUI();
             }
         }
 
-        // --- NEW HABITS FUNCTIONS ---
+        function openPomodoroSettingsSheet() {
+            const contentEl = document.getElementById('bottomSheetContent');
+            contentEl.innerHTML = `
+                <div class="sheet-title">Pomodoro Settings</div>
+                <div class="form-group">
+                    <label class="form-label">Pomodoro Duration (minutes)</label>
+                    <input type="number" class="form-input" id="pomodoroDuration" value="${pomodoroSettings.pomodoro}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Short Break Duration (minutes)</label>
+                    <input type="number" class="form-input" id="shortBreakDuration" value="${pomodoroSettings.short}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Long Break Duration (minutes)</label>
+                    <input type="number" class="form-input" id="longBreakDuration" value="${pomodoroSettings.long}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Timer View</label>
+                    <div class="priority-buttons" style="grid-template-columns: 1fr 1fr;">
+                        <button class="btn-option ${pomodoroSettings.view === 'digital' ? 'active' : ''}" onclick="selectPomodoroView('digital', this)">Digital</button>
+                        <button class="btn-option ${pomodoroSettings.view === 'analog' ? 'active' : ''}" onclick="selectPomodoroView('analog', this)">Analog</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-save" onclick="saveAndClosePomodoroSettings()">Done</button>
+                </div>
+            `;
+            openBottomSheet();
+        }
+
+        function selectPomodoroView(view, btn) {
+            document.querySelectorAll('#bottomSheetContent .priority-buttons .btn-option').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            pomodoroSettings.view = view;
+        }
+
+        function saveAndClosePomodoroSettings() {
+            pomodoroSettings.pomodoro = parseInt(document.getElementById('pomodoroDuration').value) || 20;
+            pomodoroSettings.short = parseInt(document.getElementById('shortBreakDuration').value) || 5;
+            pomodoroSettings.long = parseInt(document.getElementById('longBreakDuration').value) || 15;
+            savePomodoroSettings();
+            stopPomodoro(); // Reset timer with new values
+            closeBottomSheet();
+        }
+
+        // --- HABITS FUNCTIONS ---
         function checkHabitsDate() {
             const todayStr = new Date().toISOString().split('T')[0];
             if (habitsData.lastCheckedDate !== todayStr) {
-                // It's a new day, archive yesterday's points
                 const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
                 habitsData.totalPoints += yesterdayPoints;
-                
-                // Reset for today
                 habitsData.lastCheckedDate = todayStr;
                 habitsData.todayHabits.forEach(h => h.completed = false);
                 saveHabitsData();
@@ -2363,13 +2325,12 @@
         }
 
 
-        // Main loop: Run every second for accurate timers and notifications
+        // Main loop & Initial Load
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
             checkHabitsDate(); // Check date on load
             renderTasks();
-            // Run once immediately on load to set initial timer states correctly
             masterTick();
         });
     </script>
