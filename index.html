@@ -748,30 +748,36 @@
             text-shadow: 0 0 2px rgba(0,0,0,0.5);
         }
 
-        /* NEW View Toggle Styles */
-        .view-toggle {
-            display: flex;
+        /* NEW 2x2 View Toggle Styles */
+        .view-toggle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2px;
             background: #f0f0f0;
             border-radius: 28px;
             padding: 4px;
+            width: 56px;
+            height: 56px;
         }
         .toggle-btn {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
+            width: 100%;
+            height: 100%;
             border: none;
             background: transparent;
-            font-size: 24px;
+            font-size: 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s, color 0.2s;
+            transition: background-color 0.2s, color 0.2s, transform 0.2s;
+            border-radius: 50%;
         }
         .toggle-btn.active {
             background: #fff;
             color: #2196F3;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transform: scale(1.1);
         }
 
         /* NEW Calendar Styles */
@@ -877,6 +883,106 @@
             display: flex;
             transform: translateY(0);
         }
+
+        /* NEW Pomodoro Styles */
+        .pomodoro-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: calc(100vh - 160px); /* Full height minus header/footer */
+            background-color: #d32f2f;
+            color: white;
+            transition: background-color 0.5s;
+        }
+        .pomodoro-container.short-break { background-color: #388e3c; }
+        .pomodoro-container.long-break { background-color: #1976d2; }
+
+        .pomodoro-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+        .pomodoro-tab {
+            padding: 8px 16px;
+            border: none;
+            background: rgba(0,0,0,0.1);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .pomodoro-tab.active {
+            background: white;
+            color: #333;
+        }
+        #pomodoro-timer {
+            font-size: 80px;
+            font-weight: 200;
+            margin-bottom: 30px;
+        }
+        .pomodoro-controls {
+            display: flex;
+            gap: 16px;
+        }
+        .pomodoro-btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .pomodoro-btn-stop {
+            background: transparent;
+            color: white;
+            box-shadow: none;
+        }
+
+        /* NEW Habits Styles */
+        .habits-container {
+            padding: 16px;
+        }
+        .habit-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .habit-item label {
+            flex: 1;
+            font-size: 16px;
+        }
+        .habit-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+        .points-display {
+            display: flex;
+            justify-content: space-around;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .points-display div {
+            font-size: 14px;
+            color: #666;
+        }
+        .points-display span {
+            display: block;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -890,28 +996,28 @@
         </div>
     </div>
 
-    <div class="main-content" id="todoView">
-        <div id="taskList">
-            <!-- Task list is rendered here -->
-        </div>
+    <div id="todoView" class="main-content">
+        <div id="taskList"></div>
     </div>
 
-    <div id="calendarView" class="calendar-container" style="display: none;">
-        <!-- Calendar is rendered here -->
-    </div>
+    <div id="calendarView" class="calendar-container" style="display: none;"></div>
 
-    <div id="dateFilterNav" class="date-filter-nav">
-        <!-- Buttons will be injected by JS -->
-    </div>
+    <div id="pomodoroView" class="pomodoro-container" style="display: none;"></div>
+
+    <div id="habitsView" class="habits-container" style="display: none;"></div>
+
+    <div id="dateFilterNav" class="date-filter-nav"></div>
 
 
     <div class="bottom-nav">
         <div class="search-icon" onclick="openSearchSheet()">
             🔍
         </div>
-        <div class="view-toggle">
+        <div class="view-toggle-grid">
             <button id="todo-toggle" class="toggle-btn active" onclick="switchView('todo')" title="Todo List">📝</button>
             <button id="calendar-toggle" class="toggle-btn" onclick="switchView('calendar')" title="Calendar">📅</button>
+            <button id="pomodoro-toggle" class="toggle-btn" onclick="switchView('pomodoro')" title="Pomodoro">⏲️</button>
+            <button id="habits-toggle" class="toggle-btn" onclick="switchView('habits')" title="Good Habits">🌱</button>
         </div>
         <div class="quick-add-container">
             <input type="text" class="quick-add" placeholder="Tap to quickly add task..." 
@@ -943,12 +1049,37 @@
         let activeNotificationIntervals = {};
         let calendarDate = new Date();
 
+        // --- NEW POMODORO STATE ---
+        let pomodoroSettings = JSON.parse(localStorage.getItem('pomodoroSettings') || '{"pomodoro": 20, "short": 5, "long": 15}');
+        let pomodoroMode = 'pomodoro'; // 'pomodoro', 'short', 'long'
+        let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
+        let isPomodoroRunning = false;
+        let pomodoroInterval = null;
+
+        // --- NEW HABITS STATE ---
+        let habitsData = JSON.parse(localStorage.getItem('habitsData') || JSON.stringify({
+            totalPoints: 0,
+            lastCheckedDate: null,
+            todayHabits: [
+                { text: 'hello', completed: false },
+                { text: 'hi', completed: false },
+                { text: 'bye', completed: false },
+                { text: 'hey', completed: false },
+                { text: 'ok', completed: false }
+            ]
+        }));
+
         function saveToStorage() {
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
         }
 
         function saveNotificationSettings() {
             localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+            localStorage.setItem('pomodoroSettings', JSON.stringify(pomodoroSettings));
+        }
+
+        function saveHabitsData() {
+            localStorage.setItem('habitsData', JSON.stringify(habitsData));
         }
 
         function generateId() {
@@ -1257,6 +1388,9 @@
 
             if (taskToEdit) {
                 populateSmartSheet(taskToEdit);
+                if (taskToEdit.date && !taskToEdit.id) { // Pre-fill from calendar click
+                    toggleSmartOptions('date', true);
+                }
             }
 
             openBottomSheet();
@@ -1611,7 +1745,21 @@
         function openSettingsSheet() {
             const contentEl = document.getElementById('bottomSheetContent');
             contentEl.innerHTML = `
-                <div class="sheet-title">Notification Settings</div>
+                <div class="sheet-title">Settings</div>
+                <div class="form-group">
+                    <label class="form-label">Pomodoro Duration (minutes)</label>
+                    <input type="number" class="form-input" id="pomodoroDuration" value="${pomodoroSettings.pomodoro}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Short Break Duration (minutes)</label>
+                    <input type="number" class="form-input" id="shortBreakDuration" value="${pomodoroSettings.short}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Long Break Duration (minutes)</label>
+                    <input type="number" class="form-input" id="longBreakDuration" value="${pomodoroSettings.long}">
+                </div>
+                <hr style="margin: 24px 0; border: 1px solid #f0f0f0;">
+                <div class="sheet-title" style="font-size: 18px; margin-top: 0;">Notification Settings</div>
                 <div class="settings-row">
                     <div class="checkbox-group" style="margin:0;">
                         <input type="checkbox" id="notificationsEnabled" ${notificationSettings.enabled ? 'checked' : ''}>
@@ -1677,6 +1825,13 @@
         }
 
         function saveAndCloseSettings() {
+            // Pomodoro settings
+            pomodoroSettings.pomodoro = parseInt(document.getElementById('pomodoroDuration').value) || 20;
+            pomodoroSettings.short = parseInt(document.getElementById('shortBreakDuration').value) || 5;
+            pomodoroSettings.long = parseInt(document.getElementById('longBreakDuration').value) || 15;
+            stopPomodoro(); // Reset timer with new values
+
+            // Notification settings
             notificationSettings.enabled = document.getElementById('notificationsEnabled').checked;
             notificationSettings.duration = parseInt(document.getElementById('notificationDuration').value);
             notificationSettings.volume = parseInt(document.getElementById('volumeSlider').value);
@@ -1684,6 +1839,7 @@
             notificationSettings.repeatEnabled = document.getElementById('repeatEnabled').checked;
             notificationSettings.repeatCount = parseInt(document.getElementById('repeatCount').value) || 3;
             notificationSettings.stopWithButton = document.getElementById('stopWithButton').checked;
+            
             saveNotificationSettings();
             closeBottomSheet();
         }
@@ -1980,24 +2136,25 @@
 
         // --- NEW CALENDAR LOGIC ---
         function switchView(view) {
-            const todoView = document.getElementById('todoView');
-            const calendarView = document.getElementById('calendarView');
-            const todoToggle = document.getElementById('todo-toggle');
-            const calendarToggle = document.getElementById('calendar-toggle');
+            const views = ['todo', 'calendar', 'pomodoro', 'habits'];
+            views.forEach(v => {
+                document.getElementById(`${v}View`).style.display = 'none';
+                document.getElementById(`${v}-toggle`).classList.remove('active');
+            });
 
-            if (view === 'todo') {
-                todoView.style.display = 'block';
-                calendarView.style.display = 'none';
-                todoToggle.classList.add('active');
-                calendarToggle.classList.remove('active');
-                renderTasks(); // Re-render tasks to show/hide date filter nav
-            } else {
-                todoView.style.display = 'none';
-                calendarView.style.display = 'block';
-                todoToggle.classList.remove('active');
-                calendarToggle.classList.add('active');
-                applyFilter('all'); // Reset any date filter when going to calendar
-                renderCalendar();
+            document.getElementById(`${view}View`).style.display = 'block';
+            document.getElementById(`${view}-toggle`).classList.add('active');
+            
+            document.getElementById('main-header').textContent = view.charAt(0).toUpperCase() + view.slice(1);
+            if (view === 'todo') document.getElementById('main-header').textContent = 'Todo';
+
+
+            if (view === 'todo') renderTasks();
+            if (view === 'calendar') renderCalendar();
+            if (view === 'pomodoro') renderPomodoro();
+            if (view === 'habits') {
+                checkHabitsDate();
+                renderHabits();
             }
         }
 
@@ -2090,11 +2247,127 @@
             openSmartAddTaskSheet({ date: dateString });
         }
 
+        // --- NEW POMODORO FUNCTIONS ---
+        function renderPomodoro() {
+            const container = document.getElementById('pomodoroView');
+            container.innerHTML = `
+                <div class="pomodoro-tabs">
+                    <button id="p-tab-pomodoro" class="pomodoro-tab" onclick="setPomodoroMode('pomodoro')">Pomodoro</button>
+                    <button id="p-tab-short" class="pomodoro-tab" onclick="setPomodoroMode('short')">Short Break</button>
+                    <button id="p-tab-long" class="pomodoro-tab" onclick="setPomodoroMode('long')">Long Break</button>
+                </div>
+                <div id="pomodoro-timer"></div>
+                <div class="pomodoro-controls">
+                    <button id="pomodoro-start-btn" class="pomodoro-btn" onclick="startPausePomodoro()">START</button>
+                    <button class="pomodoro-btn pomodoro-btn-stop" onclick="stopPomodoro()">STOP</button>
+                </div>
+            `;
+            updatePomodoroUI();
+        }
+
+        function updatePomodoroUI() {
+            const minutes = Math.floor(pomodoroTimeLeft / 60);
+            const seconds = pomodoroTimeLeft % 60;
+            document.getElementById('pomodoro-timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            document.querySelectorAll('.pomodoro-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`p-tab-${pomodoroMode}`).classList.add('active');
+
+            const container = document.getElementById('pomodoroView');
+            container.classList.remove('short-break', 'long-break');
+            if (pomodoroMode === 'short') container.classList.add('short-break');
+            if (pomodoroMode === 'long') container.classList.add('long-break');
+
+            document.getElementById('pomodoro-start-btn').textContent = isPomodoroRunning ? 'PAUSE' : 'START';
+        }
+
+        function setPomodoroMode(mode) {
+            stopPomodoro();
+            pomodoroMode = mode;
+            pomodoroTimeLeft = pomodoroSettings[mode] * 60;
+            updatePomodoroUI();
+        }
+
+        function startPausePomodoro() {
+            isPomodoroRunning = !isPomodoroRunning;
+            if (isPomodoroRunning) {
+                pomodoroInterval = setInterval(pomodoroTick, 1000);
+            } else {
+                clearInterval(pomodoroInterval);
+            }
+            updatePomodoroUI();
+        }
+
+        function stopPomodoro() {
+            clearInterval(pomodoroInterval);
+            isPomodoroRunning = false;
+            pomodoroTimeLeft = pomodoroSettings[pomodoroMode] * 60;
+            updatePomodoroUI();
+        }
+
+        function pomodoroTick() {
+            pomodoroTimeLeft--;
+            if (pomodoroTimeLeft < 0) {
+                clearInterval(pomodoroInterval);
+                isPomodoroRunning = false;
+                playNotificationSound();
+                // Cycle logic
+                if (pomodoroMode === 'pomodoro') {
+                    setPomodoroMode('short');
+                } else {
+                    setPomodoroMode('pomodoro');
+                }
+            } else {
+                updatePomodoroUI();
+            }
+        }
+
+        // --- NEW HABITS FUNCTIONS ---
+        function checkHabitsDate() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (habitsData.lastCheckedDate !== todayStr) {
+                // It's a new day, archive yesterday's points
+                const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
+                habitsData.totalPoints += yesterdayPoints;
+                
+                // Reset for today
+                habitsData.lastCheckedDate = todayStr;
+                habitsData.todayHabits.forEach(h => h.completed = false);
+                saveHabitsData();
+            }
+        }
+
+        function renderHabits() {
+            const container = document.getElementById('habitsView');
+            const todayPoints = habitsData.todayHabits.filter(h => h.completed).length;
+            let habitsHTML = habitsData.todayHabits.map((habit, index) => `
+                <div class="habit-item">
+                    <input type="checkbox" id="habit-${index}" ${habit.completed ? 'checked' : ''} onchange="toggleHabit(${index})">
+                    <label for="habit-${index}">${habit.text}</label>
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="points-display">
+                    <div>Today's Points<span>${todayPoints}</span></div>
+                    <div>Total Points<span>${habitsData.totalPoints}</span></div>
+                </div>
+                <div style="margin-top: 24px;">${habitsHTML}</div>
+            `;
+        }
+
+        function toggleHabit(index) {
+            habitsData.todayHabits[index].completed = !habitsData.todayHabits[index].completed;
+            saveHabitsData();
+            renderHabits();
+        }
+
 
         // Main loop: Run every second for accurate timers and notifications
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
+            checkHabitsDate(); // Check date on load
             renderTasks();
             // Run once immediately on load to set initial timer states correctly
             masterTick();
