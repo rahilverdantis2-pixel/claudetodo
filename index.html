@@ -1241,7 +1241,6 @@
                 return defaultHabitsData;
             }
             
-            // Merge saved data with defaults to ensure new properties are added
             if (!savedData.streak) savedData.streak = defaultHabitsData.streak;
             if (!savedData.habitStats) savedData.habitStats = defaultHabitsData.habitStats;
             if (savedData.streak && typeof savedData.streak.recoveryMonth === 'undefined') {
@@ -2062,36 +2061,55 @@
             }
         }
 
+        // --- MODIFIED playNotificationSound FUNCTION ---
         function playNotificationSound() {
             const liveVolume = notificationSettings.volume / 100;
 
-            if (customSoundURL) {
-                const audio = new Audio(customSoundURL);
-                audio.volume = liveVolume;
-                audio.play().catch(e => console.error("Error playing custom sound:", e));
+            // This helper function plays the sound one time.
+            const playSingleSound = () => {
+                if (customSoundURL) {
+                    const audio = new Audio(customSoundURL);
+                    audio.volume = liveVolume;
+                    audio.play().catch(e => console.error("Error playing custom sound:", e));
+                } else {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(liveVolume, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1);
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 1);
+                    } catch (error) {
+                        console.error("Audio Context Error:", error);
+                    }
+                }
+            };
+
+            // If repeat is disabled or count is 1, just play once and stop.
+            if (!notificationSettings.repeatEnabled || notificationSettings.repeatCount <= 1) {
+                playSingleSound();
                 return;
             }
 
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                
-                gainNode.gain.setValueAtTime(liveVolume, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 1);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 1);
-            } catch (error) {
-                console.error("Audio Context Error:", error);
-            }
+            // If repeat is enabled, set up an interval.
+            let playCount = 0;
+            const totalPlays = notificationSettings.repeatCount;
+            const intervalDelay = 2000; // 2 seconds between each sound
+
+            const repeatInterval = setInterval(() => {
+                playSingleSound();
+                playCount++;
+                if (playCount >= totalPlays) {
+                    clearInterval(repeatInterval);
+                }
+            }, intervalDelay);
         }
+        // --- END OF MODIFIED FUNCTION ---
 
         function handleCustomSound(event) {
             const file = event.target.files[0];
@@ -2605,5 +2623,8 @@
             masterTick();
         });
     </script>
+</body>
+</html>
+
 </body>
 </html>
