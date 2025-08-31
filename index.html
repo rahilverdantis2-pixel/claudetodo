@@ -1215,8 +1215,10 @@
         let isPomodoroRunning = false;
         let pomodoroInterval = null;
 
-        // --- HABITS STATE ---
-        let habitsData = JSON.parse(localStorage.getItem('habitsData') || JSON.stringify({
+        // --- HABITS STATE (WITH ROBUST LOADING) ---
+
+        // 1. Define the "perfect" default structure for our habits data.
+        const defaultHabitsData = {
             totalPoints: 0,
             lastCheckedDate: null,
             todayHabits: [
@@ -1240,7 +1242,45 @@
                 { text: 'Plan tomorrow', completions: 0 }
             ],
             dailyCompletionsHistory: {} // { 'YYYY-MM-DD': count }
-        }));
+        };
+
+        // 2. Create a function to load data and migrate it if it's old.
+        function loadAndMigrateHabitsData() {
+            console.log("Attempting to load habits data from localStorage...");
+            const savedData = JSON.parse(localStorage.getItem('habitsData'));
+
+            // If there's no saved data at all, return the fresh default object.
+            if (!savedData) {
+                console.log("No saved data found. Using default structure.");
+                return defaultHabitsData;
+            }
+            
+            console.log("Saved data found. Checking for missing properties (migrating)...");
+
+            // --- MIGRATION CHECKS ---
+            // Check if the top-level 'streak' property exists. If not, add it from the default.
+            if (!savedData.streak) {
+                console.warn("Migration: 'streak' property was missing. Adding default.");
+                savedData.streak = defaultHabitsData.streak;
+            }
+            // Check if the top-level 'habitStats' property exists. If not, add it.
+            if (!savedData.habitStats) {
+                console.warn("Migration: 'habitStats' property was missing. Adding default.");
+                savedData.habitStats = defaultHabitsData.habitStats;
+            }
+            // Check for a nested property to be extra safe.
+            if (savedData.streak && typeof savedData.streak.recoveryMonth === 'undefined') {
+                 console.warn("Migration: 'streak.recoveryMonth' was missing. Adding default.");
+                 savedData.streak.recoveryMonth = defaultHabitsData.streak.recoveryMonth;
+            }
+
+            console.log("Migration complete. Final loaded data:", savedData);
+            return savedData;
+        }
+
+        // 3. Initialize habitsData using our new robust function.
+        let habitsData = loadAndMigrateHabitsData();
+
 
         function saveToStorage() {
             localStorage.setItem('todoTasks', JSON.stringify(tasks));
@@ -2439,7 +2479,10 @@
                     habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
                     habitsData.todayHabits.forEach((habit, index) => {
                         if (habit.completed) {
-                            habitsData.habitStats[index].completions++;
+                            // Ensure habitStats has the same length as todayHabits
+                            if(habitsData.habitStats[index]) {
+                                habitsData.habitStats[index].completions++;
+                            }
                         }
                     });
                 } else {
@@ -2648,7 +2691,7 @@
         setInterval(masterTick, 1000);
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 App Loaded. Initial habitsData from localStorage:', JSON.parse(JSON.stringify(habitsData)));
+            console.log('🚀 App Loaded.');
             checkHabitsDate(); // Check date on load
             renderTasks();
             masterTick();
