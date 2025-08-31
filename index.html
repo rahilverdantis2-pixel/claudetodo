@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1059,12 +1060,10 @@
             border-radius: 8px;
             margin-bottom: 12px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            cursor: pointer;
         }
         .habit-item label {
             flex: 1;
             font-size: 16px;
-            pointer-events: none; /* Clicks pass through to parent div */
         }
         .points-display {
             display: flex;
@@ -2210,12 +2209,7 @@
 
             document.getElementById(`${view}View`).style.display = 'block';
             const toggleBtn = document.getElementById(`${view}-toggle`);
-            if(toggleBtn) {
-                toggleBtn.classList.add('active');
-            } else {
-                // If no toggle button (like for stats), keep the parent active
-                document.getElementById('habits-toggle').classList.add('active');
-            }
+            if(toggleBtn) toggleBtn.classList.add('active');
             
             const headerTitle = view.charAt(0).toUpperCase() + view.slice(1);
             document.getElementById('main-header').textContent = view === 'todo' ? 'Todo' : headerTitle;
@@ -2426,9 +2420,7 @@
                 // --- Archive yesterday's data ---
                 const yesterdayPoints = habitsData.todayHabits.filter(h => h.completed).length;
                 habitsData.totalPoints += yesterdayPoints;
-                if (habitsData.lastCheckedDate) { // Only record if there was a previous date
-                    habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
-                }
+                habitsData.dailyCompletionsHistory[habitsData.lastCheckedDate] = yesterdayPoints;
                 habitsData.todayHabits.forEach((habit, index) => {
                     if (habit.completed) {
                         habitsData.habitStats[index].completions++;
@@ -2445,7 +2437,7 @@
                     habitsData.streak.recoveryMonth = currentMonth;
                 }
 
-                if (habitsData.streak.lastStreakDate !== yesterdayStr && habitsData.streak.lastStreakDate !== todayStr) {
+                if (yesterdayPoints === 0) {
                     if (habitsData.streak.recoveryChancesUsedThisMonth < 2) {
                         habitsData.streak.recoveryChancesUsedThisMonth++;
                     } else {
@@ -2468,14 +2460,14 @@
                     <div class="task-checkbox ${habit.completed ? 'completed' : ''}">
                         ${habit.completed ? '✓' : ''}
                     </div>
-                    <label>${habit.text}</label>
+                    <label for="habit-${index}">${habit.text}</label>
                 </div>
             `).join('');
 
             container.innerHTML = `
                 <div class="points-display">
                     <div>Today's Points<span>${todayPoints}</span></div>
-                    <div>Total Points<span>${habitsData.totalPoints + todayPoints}</span></div>
+                    <div>Total Points<span>${habitsData.totalPoints}</span></div>
                 </div>
                 <div style="margin-top: 24px;">${habitsHTML}</div>
                 <div style="text-align: center; margin-top: 24px;">
@@ -2484,62 +2476,64 @@
             `;
         }
 
-        /**
-         * [FIXED] Refactored toggleHabit to simplify streak logic and ensure immediate UI updates.
-         */
         function toggleHabit(index) {
+            const wasAlreadyCompleted = habitsData.todayHabits.some(h => h.completed);
             habitsData.todayHabits[index].completed = !habitsData.todayHabits[index].completed;
+            const isNowCompleted = habitsData.todayHabits.some(h => h.completed);
 
-            const isAnyCompletedNow = habitsData.todayHabits.some(h => h.completed);
-            const todayStr = new Date().toISOString().split('T')[0];
+            // Streak logic on toggle
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-            // Update streak only on the first completion of the day.
-            // We check if any habit is completed now AND if we haven't already updated the streak for today.
-            if (isAnyCompletedNow && habitsData.streak.lastStreakDate !== todayStr) {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-                if (habitsData.streak.lastStreakDate === yesterdayStr) {
-                    habitsData.streak.current++; // Continued streak
-                } else {
-                    habitsData.streak.current = 1; // New or broken streak
+            if (!wasAlreadyCompleted && isNowCompleted) { // First completion of the day
+                if (habitsData.streak.lastStreakDate !== todayStr) {
+                    if (habitsData.streak.lastStreakDate === yesterdayStr) {
+                        habitsData.streak.current++;
+                    } else {
+                        habitsData.streak.current = 1;
+                    }
+                    habitsData.streak.lastStreakDate = todayStr;
                 }
-                habitsData.streak.lastStreakDate = todayStr;
+            } else if (wasAlreadyCompleted && !isNowCompleted) { // Unticked the last one
+                if (habitsData.streak.lastStreakDate === todayStr) {
+                    habitsData.streak.current--;
+                    if (habitsData.streak.current <= 0) {
+                        habitsData.streak.current = 0;
+                        habitsData.streak.lastStreakDate = null;
+                    } else {
+                        habitsData.streak.lastStreakDate = yesterdayStr;
+                    }
+                }
             }
-            
+
             saveHabitsData();
             renderHabits();
         }
 
-        /**
-         * [FIXED] Corrected calculations for stats and made the function more robust.
-         */
         function renderStats() {
             const container = document.getElementById('statsView');
-            
-            // Create a temporary, live version of stats for display
-            const liveHabitStats = JSON.parse(JSON.stringify(habitsData.habitStats));
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
             const todayPoints = habitsData.todayHabits.filter(h => h.completed).length;
-            habitsData.todayHabits.forEach((habit, index) => {
-                if (habit.completed) {
-                    liveHabitStats[index].completions++;
-                }
-            });
 
-            const sortedHabits = [...liveHabitStats].sort((a, b) => b.completions - a.completions);
-            const bestHabit = sortedHabits.length > 0 ? sortedHabits[0].text : 'N/A';
-            const worstHabit = sortedHabits.length > 0 ? sortedHabits[sortedHabits.length - 1].text : 'N/A';
-            
-            const totalCompletions = liveHabitStats.reduce((sum, h) => sum + h.completions, 0);
+            // Include today in stats
+            const tempHabitStats = habitsData.habitStats.map((stat, idx) => ({
+                text: stat.text,
+                completions: stat.completions + (habitsData.todayHabits[idx].completed ? 1 : 0)
+            }));
+            const sortedHabits = [...tempHabitStats].sort((a, b) => b.completions - a.completions);
+            const bestHabit = sortedHabits[0].text;
+            const worstHabit = sortedHabits[sortedHabits.length - 1].text;
 
-            // Correct calculation for total possible completions
-            const totalHabitsPerDay = habitsData.habitStats.length || 5;
-            const numberOfDaysWithData = Object.keys(habitsData.dailyCompletionsHistory).length + 1;
-            const totalPossible = numberOfDaysWithData * totalHabitsPerDay;
-            const completionRate = totalPossible > 0 ? Math.round((totalCompletions / totalPossible) * 100) : 0;
+            const totalCompletionsDisplay = habitsData.habitStats.reduce((sum, h) => sum + h.completions, 0) + todayPoints;
+            const totalDays = Object.keys(habitsData.dailyCompletionsHistory).length + 1; // Including today
+            const totalPossible = totalDays * 5;
+            const completionRate = totalPossible > 0 ? Math.round((totalCompletionsDisplay / totalPossible) * 100) : 0;
 
-            // Bar chart data
+            // Bar chart data including today
             let chartHTML = '';
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             for (let i = 6; i >= 0; i--) {
@@ -2547,11 +2541,8 @@
                 date.setDate(date.getDate() - i);
                 const dateStr = date.toISOString().split('T')[0];
                 const dayName = days[date.getDay()];
-                let completions = habitsData.dailyCompletionsHistory[dateStr] || 0;
-                if (dateStr === habitsData.lastCheckedDate) {
-                    completions = todayPoints;
-                }
-                const barHeight = totalHabitsPerDay > 0 ? (completions / totalHabitsPerDay) * 100 : 0;
+                const completions = habitsData.dailyCompletionsHistory[dateStr] || (dateStr === todayStr ? todayPoints : 0);
+                const barHeight = (completions / 5) * 100;
                 chartHTML += `<div class="bar" style="height: ${barHeight}%;"><div class="bar-label">${dayName}</div></div>`;
             }
 
