@@ -887,16 +887,14 @@
         /* REFINED Pomodoro Styles */
         .pomodoro-container {
             display: flex;
-            flex-direction: row; /* Changed to row */
+            flex-direction: column;
             align-items: center;
-            justify-content: center; /* Center horizontally */
-            gap: 40px; /* Space between timer and settings */
-            height: calc(100vh - 80px); /* Full height minus header/footer */
+            justify-content: space-around;
+            height: calc(100vh - 80px);
             background-color: #d32f2f;
             color: white;
             transition: background-color 0.5s;
             padding: 16px;
-            flex-wrap: wrap; /* Allow wrapping on smaller screens */
         }
         .pomodoro-container.short-break { background-color: #388e3c; }
         .pomodoro-container.long-break { background-color: #1976d2; }
@@ -995,11 +993,11 @@
             padding: 16px;
             border-radius: 12px;
             width: 100%;
-            max-width: 300px;
+            max-width: 400px;
         }
         .p-settings-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 12px;
             align-items: center;
         }
@@ -2340,11 +2338,10 @@
             }
             savePomodoroSettings();
             
-            // If the setting for the current mode was changed, reset the timer
             if (key === pomodoroMode && !isPomodoroRunning) {
                 stopPomodoro();
             }
-            renderPomodoro(); // Re-render to update input values and view toggle
+            renderPomodoro();
         }
 
         // --- HABITS FUNCTIONS ---
