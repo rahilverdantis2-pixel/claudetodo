@@ -1206,7 +1206,9 @@
         let pomodoroMode = 'pomodoro';
         let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
         let isPomodoroRunning = false;
-        let pomodoroInterval = null;
+        // NEW: Initialize the Web Worker
+        let pomodoroWorker = new Worker('pomodoro-worker.js');
+
 
         // --- HABITS STATE (WITH ROBUST LOADING) ---
         const defaultHabitsData = {
@@ -2312,7 +2314,26 @@
             openSmartAddTaskSheet({ date: dateString });
         }
 
-        // --- POMODORO FUNCTIONS ---
+        // --- POMODORO FUNCTIONS (REWRITTEN FOR WEB WORKER) ---
+
+        // NEW: Listen for messages from the worker
+        pomodoroWorker.onmessage = function(e) {
+            const { type, timeLeft } = e.data;
+
+            if (type === 'update') {
+                pomodoroTimeLeft = timeLeft;
+                updatePomodoroUI();
+            } else if (type === 'done') {
+                isPomodoroRunning = false;
+                playNotificationSound();
+                if (pomodoroMode === 'pomodoro') {
+                    setPomodoroMode('short');
+                } else {
+                    setPomodoroMode('pomodoro');
+                }
+            }
+        };
+
         function renderPomodoro() {
             const container = document.getElementById('pomodoroView');
             container.innerHTML = `
@@ -2366,7 +2387,7 @@
 
             if (pomodoroSettings.view === 'analog') {
                 const totalDuration = pomodoroSettings[pomodoroMode] * 60;
-                const progress = pomodoroTimeLeft / totalDuration;
+                const progress = totalDuration > 0 ? pomodoroTimeLeft / totalDuration : 0;
                 const angle = progress * 360;
                 display.innerHTML = `
                     <div class="solid-analog-clock" style="--progress-angle: ${angle}deg">
@@ -2388,45 +2409,44 @@
         }
 
         function setPomodoroMode(mode) {
-            stopPomodoro();
+            stopPomodoro(); // This will also reset the worker
             pomodoroMode = mode;
             pomodoroTimeLeft = pomodoroSettings[mode] * 60;
+            // Tell the worker to reset to the new time
+            pomodoroWorker.postMessage({ command: 'reset', time: pomodoroTimeLeft });
             updatePomodoroUI();
         }
 
         function startPausePomodoro() {
             isPomodoroRunning = !isPomodoroRunning;
             if (isPomodoroRunning) {
-                pomodoroInterval = setInterval(pomodoroTick, 1000);
+                // Tell the worker to start the countdown
+                pomodoroWorker.postMessage({ command: 'start', time: pomodoroTimeLeft });
             } else {
-                clearInterval(pomodoroInterval);
+                // Tell the worker to pause
+                pomodoroWorker.postMessage({ command: 'pause' });
             }
             updatePomodoroUI();
         }
 
         function stopPomodoro() {
-            clearInterval(pomodoroInterval);
             isPomodoroRunning = false;
+            // Tell the worker to stop and reset
+            pomodoroWorker.postMessage({ command: 'stop' });
             pomodoroTimeLeft = pomodoroSettings[pomodoroMode] * 60;
             updatePomodoroUI();
         }
 
         function extendPomodoroTime() {
             pomodoroTimeLeft += 300; // Add 5 minutes
-            updatePomodoroUI();
-        }
-
-        function pomodoroTick() {
-            pomodoroTimeLeft--;
-            if (pomodoroTimeLeft < 0) {
-                clearInterval(pomodoroInterval);
-                isPomodoroRunning = false;
-                playNotificationSound();
-                if (pomodoroMode === 'pomodoro') setPomodoroMode('short');
-                else setPomodoroMode('pomodoro');
+            // If running, tell worker to start from the new time
+            if (isPomodoroRunning) {
+                 pomodoroWorker.postMessage({ command: 'start', time: pomodoroTimeLeft });
             } else {
-                updatePomodoroUI();
+                // If paused, just update the time and tell worker to reset to it
+                 pomodoroWorker.postMessage({ command: 'reset', time: pomodoroTimeLeft });
             }
+            updatePomodoroUI();
         }
 
         function updatePomodoroSetting(key, value) {
@@ -2437,8 +2457,9 @@
             }
             savePomodoroSettings();
             
-            if (key === pomodoroMode && !isPomodoroRunning) {
-                stopPomodoro();
+            // If the timer is not running, update the mode and reset the timer
+            if (!isPomodoroRunning && key === pomodoroMode) {
+                setPomodoroMode(pomodoroMode);
             }
             renderPomodoro();
         }
