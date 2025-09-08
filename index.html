@@ -1206,7 +1206,6 @@
         let pomodoroMode = 'pomodoro';
         let pomodoroTimeLeft = pomodoroSettings.pomodoro * 60;
         let isPomodoroRunning = false;
-        // NEW: Initialize the Web Worker
         let pomodoroWorker = new Worker('pomodoro-worker.js');
 
 
@@ -2063,11 +2062,9 @@
             }
         }
 
-        // --- MODIFIED playNotificationSound FUNCTION ---
         function playNotificationSound() {
             const liveVolume = notificationSettings.volume / 100;
 
-            // This helper function plays the sound one time.
             const playSingleSound = () => {
                 if (customSoundURL) {
                     const audio = new Audio(customSoundURL);
@@ -2092,16 +2089,14 @@
                 }
             };
 
-            // If repeat is disabled or count is 1, just play once and stop.
             if (!notificationSettings.repeatEnabled || notificationSettings.repeatCount <= 1) {
                 playSingleSound();
                 return;
             }
 
-            // If repeat is enabled, set up an interval.
             let playCount = 0;
             const totalPlays = notificationSettings.repeatCount;
-            const intervalDelay = 2000; // 2 seconds between each sound
+            const intervalDelay = 2000;
 
             const repeatInterval = setInterval(() => {
                 playSingleSound();
@@ -2111,7 +2106,6 @@
                 }
             }, intervalDelay);
         }
-        // --- END OF MODIFIED FUNCTION ---
 
         function handleCustomSound(event) {
             const file = event.target.files[0];
@@ -2316,7 +2310,6 @@
 
         // --- POMODORO FUNCTIONS (REWRITTEN FOR WEB WORKER) ---
 
-        // NEW: Listen for messages from the worker
         pomodoroWorker.onmessage = function(e) {
             const { type, timeLeft } = e.data;
 
@@ -2324,6 +2317,9 @@
                 pomodoroTimeLeft = timeLeft;
                 updatePomodoroUI();
             } else if (type === 'done') {
+                // FIX 1: Add a state check. Only process 'done' if the timer was supposed to be running.
+                if (!isPomodoroRunning) return;
+
                 isPomodoroRunning = false;
                 playNotificationSound();
                 if (pomodoroMode === 'pomodoro') {
@@ -2409,10 +2405,9 @@
         }
 
         function setPomodoroMode(mode) {
-            stopPomodoro(); // This will also reset the worker
+            stopPomodoro();
             pomodoroMode = mode;
             pomodoroTimeLeft = pomodoroSettings[mode] * 60;
-            // Tell the worker to reset to the new time
             pomodoroWorker.postMessage({ command: 'reset', time: pomodoroTimeLeft });
             updatePomodoroUI();
         }
@@ -2420,10 +2415,8 @@
         function startPausePomodoro() {
             isPomodoroRunning = !isPomodoroRunning;
             if (isPomodoroRunning) {
-                // Tell the worker to start the countdown
                 pomodoroWorker.postMessage({ command: 'start', time: pomodoroTimeLeft });
             } else {
-                // Tell the worker to pause
                 pomodoroWorker.postMessage({ command: 'pause' });
             }
             updatePomodoroUI();
@@ -2431,19 +2424,16 @@
 
         function stopPomodoro() {
             isPomodoroRunning = false;
-            // Tell the worker to stop and reset
             pomodoroWorker.postMessage({ command: 'stop' });
             pomodoroTimeLeft = pomodoroSettings[pomodoroMode] * 60;
             updatePomodoroUI();
         }
 
         function extendPomodoroTime() {
-            pomodoroTimeLeft += 300; // Add 5 minutes
-            // If running, tell worker to start from the new time
+            pomodoroTimeLeft += 300;
             if (isPomodoroRunning) {
                  pomodoroWorker.postMessage({ command: 'start', time: pomodoroTimeLeft });
             } else {
-                // If paused, just update the time and tell worker to reset to it
                  pomodoroWorker.postMessage({ command: 'reset', time: pomodoroTimeLeft });
             }
             updatePomodoroUI();
@@ -2457,7 +2447,6 @@
             }
             savePomodoroSettings();
             
-            // If the timer is not running, update the mode and reset the timer
             if (!isPomodoroRunning && key === pomodoroMode) {
                 setPomodoroMode(pomodoroMode);
             }
@@ -2494,7 +2483,7 @@
                 }
 
                 if (habitsData.streak.lastStreakDate !== yesterdayStr && habitsData.streak.lastStreakDate !== todayStr) {
-                    if (habitsData.streak.recoveryChancesUsedThisMonth < 3) { // CHANGED TO 3
+                    if (habitsData.streak.recoveryChancesUsedThisMonth < 3) {
                         habitsData.streak.recoveryChancesUsedThisMonth++;
                     } else {
                         habitsData.streak.current = 0;
@@ -2642,6 +2631,11 @@
             checkHabitsDate();
             renderTasks();
             masterTick();
+        });
+
+        // FIX 2: Add a listener to terminate the worker on page unload to prevent race conditions.
+        window.addEventListener('beforeunload', () => {
+            pomodoroWorker.terminate();
         });
     </script>
 </body>
